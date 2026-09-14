@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+paho-mqtt
+joblib
+numpy
+pandas
+scikit-learn
+tensorflow
+requests

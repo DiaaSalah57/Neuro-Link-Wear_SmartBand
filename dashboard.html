@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroLink Wear — Live Monitor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:        #0b0e1a;
+    --surface:   #111827;
+    --border:    #1e2d45;
+    --accent:    #3b82f6;
+    --accent2:   #8b5cf6;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --normal:    #10b981;
+    --warn:      #f59e0b;
+    --danger:    #ef4444;
+    --mono:      'JetBrains Mono', monospace;
+    --sans:      'Inter', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+
+  .conn-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--muted);
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+  }
+
+  .conn-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+
+  .conn-dot.live { background: var(--normal); box-shadow: 0 0 6px var(--normal); }
+
+  /* ── Status banner ── */
+  #status-banner {
+    padding: 14px 32px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.4s, color 0.4s;
+    background: rgba(16,185,129,0.08);
+    color: var(--normal);
+  }
+
+  #status-banner.warn   { background: rgba(245,158,11,0.08);  color: var(--warn); }
+  #status-banner.danger { background: rgba(239,68,68,0.10);   color: var(--danger); }
+
+  .status-left  { display: flex; align-items: center; gap: 10px; }
+  .status-icon  { font-size: 16px; }
+  .condition-tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid currentColor;
+    opacity: 0.8;
+  }
+
+  /* ── Main grid ── */
+  main {
+    flex: 1;
+    padding: 28px 32px;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+  }
+
+  /* ── Vitals grid ── */
+  .vitals-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    align-content: start;
+  }
+
+  .vital-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.3s;
+  }
+
+  .vital-card:hover { border-color: var(--accent); }
+
+  .vital-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .vital-value {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .vital-unit {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .vital-bar {
+    margin-top: 8px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .vital-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.6s ease;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+
+  .panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* Scores */
+  .score-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .score-row:last-child { border-bottom: none; }
+  .score-label { color: var(--muted); }
+  .score-val   { font-family: var(--mono); font-size: 12px; color: var(--text); }
+
+  /* LLM advice */
+  #llm-panel { display: none; }
+  #llm-panel.visible { display: block; }
+
+  .llm-explanation {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  .llm-advice {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--muted);
+    padding: 10px 12px;
+    background: rgba(59,130,246,0.06);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+  }
+
+  .urgency-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-bottom: 10px;
+  }
+
+  .urgency-low    { background: rgba(16,185,129,0.15); color: var(--normal); }
+  .urgency-medium { background: rgba(245,158,11,0.15); color: var(--warn); }
+  .urgency-high   { background: rgba(239,68,68,0.15);  color: var(--danger); }
+
+  /* Activity */
+  .activity-display {
+    text-align: center;
+    padding: 10px 0;
+  }
+
+  .activity-icon { font-size: 32px; margin-bottom: 6px; }
+
+  .activity-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: capitalize;
+  }
+
+  /* Timestamp */
+  #last-updated {
+    text-align: center;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--muted);
+    padding: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    NeuroLink Wear
+  </div>
+  <div class="conn-badge">
+    <div class="conn-dot" id="conn-dot"></div>
+    <span id="conn-status">Connecting…</span>
+  </div>
+</header>
+
+<div id="status-banner">
+  <div class="status-left">
+    <span class="status-icon">🟢</span>
+    <span id="ensemble-label">Waiting for data…</span>
+    <span class="condition-tag" id="condition-tag">—</span>
+  </div>
+  <span id="last-updated">—</span>
+</div>
+
+<main>
+  <!-- Vitals -->
+  <div class="vitals-grid">
+    <div class="vital-card">
+      <div class="vital-label">Heart Rate</div>
+      <div class="vital-value" id="v-hr">—</div>
+      <div class="vital-unit">bpm</div>
+      <div class="vital-bar"><div class="vital-bar-fill" id="bar-hr" style="width:0%"></div></div>
+    </div>
+    <div class="vital-card">
+      <div class="vital-label">Blood Oxygen</div>
+      <div class="vital-value" id="v-spo2">—</div>
+      <div class="vital-unit">%</div>
+      <div class="vital-bar"><div class="vital-bar-fill" id="bar-spo2" style="width:0%"></div></div>
+    </div>
+    <div class="vital-card">
+      <div class="vital-label">Temperature</div>
+      <div class="vital-value" id="v-temp">—</div>
+      <div class="vital-unit">°C</div>
+      <div class="vital-bar"><div class="vital-bar-fill" id="bar-temp" style="width:0%"></div></div>
+    </div>
+    <div class="vital-card">
+      <div class="vital-label">HRV</div>
+      <div class="vital-value" id="v-hrv">—</div>
+      <div class="vital-unit">ms</div>
+      <div class="vital-bar"><div class="vital-bar-fill" id="bar-hrv" style="width:0%"></div></div>
+    </div>
+    <div class="vital-card">
+      <div class="vital-label">GSR</div>
+      <div class="vital-value" id="v-gsr">—</div>
+      <div class="vital-unit">μS</div>
+      <div class="vital-bar"><div class="vital-bar-fill" id="bar-gsr" style="width:0%"></div></div>
+    </div>
+    <div class="vital-card">
+      <div class="vital-label">Stress Score</div>
+      <div class="vital-value" id="v-stress">—</div>
+      <div class="vital-unit">/ 1.0</div>
+      <div class="vital-bar"><div class="vital-bar-fill" id="bar-stress" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Activity -->
+    <div class="panel">
+      <div class="panel-title">Activity</div>
+      <div class="activity-display">
+        <div class="activity-icon" id="activity-icon">⌛</div>
+        <div class="activity-name" id="activity-name">—</div>
+      </div>
+    </div>
+
+    <!-- Model scores -->
+    <div class="panel">
+      <div class="panel-title">Model Scores</div>
+      <div class="score-row">
+        <span class="score-label">IF Anomaly Score</span>
+        <span class="score-val" id="s-if">—</span>
+      </div>
+      <div class="score-row">
+        <span class="score-label">LSTM Recon. Error</span>
+        <span class="score-val" id="s-lstm">—</span>
+      </div>
+      <div class="score-row">
+        <span class="score-label">Ensemble</span>
+        <span class="score-val" id="s-ensemble">—</span>
+      </div>
+    </div>
+
+    <!-- LLM advice (hidden until anomaly) -->
+    <div class="panel" id="llm-panel">
+      <div class="panel-title">AI Advice</div>
+      <div class="urgency-badge" id="urgency-badge">—</div>
+      <div class="llm-explanation" id="llm-explanation">—</div>
+      <div class="llm-advice" id="llm-advice">—</div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  const ACTIVITY_ICONS = {
+    Sleeping: '😴', Resting: '🧘', Walking: '🚶',
+    Running: '🏃', Exercising: '💪'
+  };
+
+  function setBar(id, pct) {
+    document.getElementById(id).style.width = Math.min(100, Math.max(0, pct)) + '%';
+  }
+
+  function updateBanner(ensemble, condition) {
+    const banner = document.getElementById('status-banner');
+    const icon   = banner.querySelector('.status-icon');
+    banner.className = '';
+
+    if (ensemble === 'High Confidence Anomaly') {
+      banner.classList.add('danger');
+      icon.textContent = '🔴';
+    } else if (ensemble === 'Low Confidence Anomaly') {
+      banner.classList.add('warn');
+      icon.textContent = '🟡';
+    } else {
+      icon.textContent = '🟢';
+    }
+
+    document.getElementById('ensemble-label').textContent = ensemble;
+    document.getElementById('condition-tag').textContent  = condition;
+  }
+
+  function updateLLM(llm) {
+    const panel = document.getElementById('llm-panel');
+    if (!llm) { panel.classList.remove('visible'); return; }
+
+    panel.classList.add('visible');
+    const badge = document.getElementById('urgency-badge');
+    badge.textContent  = llm.urgency.toUpperCase();
+    badge.className    = `urgency-badge urgency-${llm.urgency}`;
+    document.getElementById('llm-explanation').textContent = llm.explanation;
+    document.getElementById('llm-advice').textContent      = llm.advice;
+  }
+
+  function onMessage(data) {
+    const { vitals, scores, condition, ensemble, llm_advice } = data;
+
+    // Vitals
+    document.getElementById('v-hr').textContent    = vitals.heart_rate;
+    document.getElementById('v-spo2').textContent  = vitals.blood_oxygen;
+    document.getElementById('v-temp').textContent  = vitals.temperature;
+    document.getElementById('v-hrv').textContent   = vitals.hrv;
+    document.getElementById('v-gsr').textContent   = vitals.gsr;
+    document.getElementById('v-stress').textContent = scores.stress.toFixed(2);
+
+    // Bars
+    setBar('bar-hr',     (vitals.heart_rate  - 40)  / 160 * 100);
+    setBar('bar-spo2',   (vitals.blood_oxygen - 90)  / 10  * 100);
+    setBar('bar-temp',   (vitals.temperature  - 35)  / 5   * 100);
+    setBar('bar-hrv',    (vitals.hrv          / 80)         * 100);
+    setBar('bar-gsr',    (vitals.gsr          / 1.5)        * 100);
+    setBar('bar-stress', scores.stress                      * 100);
+
+    // Activity
+    const act = vitals.activity || '—';
+    document.getElementById('activity-icon').textContent = ACTIVITY_ICONS[act] || '❓';
+    document.getElementById('activity-name').textContent = act;
+
+    // Scores
+    document.getElementById('s-if').textContent       = scores.if_score;
+    document.getElementById('s-lstm').textContent     = scores.lstm_mae;
+    document.getElementById('s-ensemble').textContent = ensemble;
+
+    // Banner + LLM
+    updateBanner(ensemble, condition);
+    updateLLM(llm_advice);
+
+    // Timestamp
+    document.getElementById('last-updated').textContent =
+      'Last update: ' + new Date().toLocaleTimeString();
+  }
+
+  // ── WebSocket ──────────────────────────────────────────────────
+  function connect() {
+    const ws  = new WebSocket(`ws://${location.host}/ws`);
+    const dot = document.getElementById('conn-dot');
+    const lbl = document.getElementById('conn-status');
+
+    ws.onopen = () => {
+      dot.classList.add('live');
+      lbl.textContent = 'Live';
+    };
+
+    ws.onmessage = e => onMessage(JSON.parse(e.data));
+
+    ws.onclose = () => {
+      dot.classList.remove('live');
+      lbl.textContent = 'Reconnecting…';
+      setTimeout(connect, 3000);
+    };
+
+    // Keep-alive ping every 20s
+    setInterval(() => { if (ws.readyState === 1) ws.send('ping'); }, 20000);
+  }
+
+  connect();
+</script>
+</body>
+</html>
