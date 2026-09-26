@@ -91,7 +91,7 @@ export default {
     $('#set-theme').onchange = (e) => {
       const theme = e.target.checked ? 'dark' : 'light';
       document.documentElement.dataset.theme = theme;
-      localStorage.setItem('nlw_theme', theme);
+      try { localStorage.setItem('nlw_theme', theme); } catch { /* memory-only */ }
       window.dispatchEvent(new CustomEvent('nlw:theme'));
     };
     $('#set-signout').onclick = () => window.dispatchEvent(new CustomEvent('nlw:logout'));

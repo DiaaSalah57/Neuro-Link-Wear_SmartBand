@@ -1,22 +1,51 @@
 /**
  * NeuroLink Wear — API client with persistent sessions.
+ *
+ * Resilience notes:
+ * - Token is mirrored in-memory so a storage-blocked iframe still works.
+ * - `access_token` query param is sent alongside the Authorization header so
+ *   the session survives proxies that strip auth headers.
+ * - A 401 only signs the user out after re-validation via /auth/me — a single
+ *   transient failure never bounces the dashboard back to the login screen.
  */
 const TOKEN_KEY = 'nlw_token';
 const USER_KEY = 'nlw_user';
 
+// In-memory fallback (storage can throw in sandboxed iframes)
+let memToken = '';
+let memUser = null;
+
+function safeGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function safeSet(key, val) {
+  try { localStorage.setItem(key, val); } catch { /* memory-only session */ }
+}
+function safeDel(key) {
+  try { localStorage.removeItem(key); } catch { /* noop */ }
+}
+
 export const auth = {
-  get token() { return localStorage.getItem(TOKEN_KEY) || ''; },
+  get token() { return safeGet(TOKEN_KEY) || memToken; },
   get user() {
-    try { return JSON.parse(localStorage.getItem(USER_KEY) || 'null'); }
-    catch { return null; }
+    if (memUser) return memUser;
+    try {
+      const raw = safeGet(USER_KEY);
+      memUser = raw ? JSON.parse(raw) : null;
+    } catch { memUser = null; }
+    return memUser;
   },
   set(token, user) {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    memToken = token || '';
+    memUser = user || null;
+    safeSet(TOKEN_KEY, token || '');
+    safeSet(USER_KEY, JSON.stringify(user || null));
   },
   clear() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    memToken = '';
+    memUser = null;
+    safeDel(TOKEN_KEY);
+    safeDel(USER_KEY);
   },
 };
 
@@ -28,30 +57,70 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, { method = 'GET', body, query } = {}) {
+function buildUrl(path, query) {
   let url = `/api${path}`;
+  const qs = new URLSearchParams();
   if (query) {
-    const qs = new URLSearchParams();
     Object.entries(query).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') qs.set(k, v);
     });
-    const s = qs.toString();
-    if (s) url += `?${s}`;
   }
-  const headers = { 'Content-Type': 'application/json' };
-  if (auth.token) headers.Authorization = `Bearer ${auth.token}`;
+  // Proxy-proof auth: header AND query parameter carry the same token.
+  if (auth.token) qs.set('access_token', auth.token);
+  const s = qs.toString();
+  return s ? `${url}?${s}` : url;
+}
 
-  const res = await fetch(url, {
+async function rawFetch(path, { method = 'GET', body, query, authed = true } = {}) {
+  const headers = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (authed && auth.token) headers.Authorization = `Bearer ${auth.token}`;
+  return fetch(buildUrl(path, query), {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+}
 
-  if (res.status === 401 && !path.startsWith('/auth/login')) {
+/** Re-validate the session without triggering the logout side-effect. */
+async function sessionIsReallyDead() {
+  try {
+    const res = await rawFetch('/auth/me');
+    return res.status === 401 || res.status === 403;
+  } catch {
+    return false; // network hiccup — do NOT sign the user out
+  }
+}
+
+let revalidating = false;
+async function handle401(path) {
+  if (path === '/auth/me' || revalidating) {
     auth.clear();
     window.dispatchEvent(new CustomEvent('nlw:logout'));
+    return;
+  }
+  revalidating = true;
+  const dead = await sessionIsReallyDead();
+  revalidating = false;
+  if (dead) {
+    auth.clear();
+    window.dispatchEvent(new CustomEvent('nlw:logout'));
+  }
+}
+
+async function request(path, { method = 'GET', body, query } = {}) {
+  let res;
+  try {
+    res = await rawFetch(path, { method, body, query });
+  } catch (e) {
+    throw new ApiError(0, 'Network error — is the server reachable?');
+  }
+
+  if (res.status === 401) {
+    await handle401(path);
     throw new ApiError(401, 'Session expired — please sign in again');
   }
+
   let data = null;
   const text = await res.text();
   try { data = text ? JSON.parse(text) : null; } catch { data = { detail: text }; }

@@ -99,8 +99,12 @@ def _extract_token(request: Request) -> str | None:
     auth = request.headers.get("Authorization", "")
     if auth.lower().startswith("bearer "):
         return auth[7:].strip()
-    # WebSocket clients pass ?token=
-    return request.query_params.get("token")
+    # Proxy-proof fallbacks: some preview proxies strip the Authorization
+    # header — accept the standard access_token query param and X-Auth-Token.
+    token = request.headers.get("X-Auth-Token")
+    if token:
+        return token.strip()
+    return request.query_params.get("token") or request.query_params.get("access_token")
 
 
 def get_current_user(request: Request) -> dict:

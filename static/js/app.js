@@ -32,8 +32,12 @@ let currentRoute = null;
 
 /* ── theme ───────────────────────────────────────────────────────────── */
 function applyTheme() {
-  const saved = localStorage.getItem('nlw_theme') ||
-    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  let saved = null;
+  try { saved = localStorage.getItem('nlw_theme'); } catch { /* storage blocked */ }
+  if (!saved) {
+    saved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark' : 'light';
+  }
   document.documentElement.dataset.theme = saved;
   $('#theme-icon-moon')?.classList.toggle('hidden', saved === 'dark');
   $('#theme-icon-sun')?.classList.toggle('hidden', saved !== 'dark');
@@ -42,7 +46,7 @@ function applyTheme() {
 function toggleTheme() {
   const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = next;
-  localStorage.setItem('nlw_theme', next);
+  try { localStorage.setItem('nlw_theme', next); } catch { /* memory-only */ }
   $('#theme-icon-moon')?.classList.toggle('hidden', next === 'dark');
   $('#theme-icon-sun')?.classList.toggle('hidden', next !== 'dark');
 }
@@ -119,7 +123,11 @@ async function navigate() {
 }
 
 /* ── boot ────────────────────────────────────────────────────────────── */
+let booted = false;
+
 async function boot() {
+  if (booted) return;
+  booted = true;
   applyTheme();
 
   $('#theme-toggle').onclick = toggleTheme;
@@ -142,8 +150,17 @@ async function boot() {
 
   window.addEventListener('hashchange', navigate);
   window.addEventListener('nlw:sos', triggerSOS);
-  window.addEventListener('nlw:login', () => { startSession(); });
+  window.addEventListener('nlw:login', async () => {
+    try {
+      await startSession();
+    } catch (e) {
+      console.error('[session]', e);
+      toast('error', 'Could not start the session', e.message || 'Please try signing in again.');
+      loginView.render();
+    }
+  });
   window.addEventListener('nlw:logout', () => {
+    disconnectWS();
     if (currentView && currentView.destroy) currentView.destroy();
     currentView = null;
     loginView.render();
@@ -183,28 +200,37 @@ async function boot() {
     }
   });
 
-  // Existing session?
+  // Attach the sign-in form handler FIRST so a native submit can never
+  // reload the page, even before the session check completes.
+  loginView.render();
+
+  // Existing session? Upgrade to the dashboard, else stay on sign-in.
   if (auth.token && auth.user) {
     try {
       const me = await api.me();
       auth.set(auth.token, me);
-      startSession();
+      await startSession();
       return;
     } catch {
       auth.clear();
+      loginView.render();
     }
   }
-  loginView.render();
 }
 
 async function startSession() {
+  const user = auth.user;
+  if (!user || !auth.token) {
+    loginView.render();
+    return;
+  }
+
   $('#login-screen').classList.add('hidden');
   $('#app-shell').classList.remove('hidden');
 
-  const user = auth.user;
-  $('#user-name').textContent = user.name;
+  $('#user-name').textContent = user.name || 'User';
   $('#user-role').textContent = user.role === 'admin' ? 'Administrator' : 'Caregiver';
-  $('#user-avatar').textContent = user.name.split(' ').map((x) => x[0]).slice(0, 2).join('');
+  $('#user-avatar').textContent = (user.name || '?').split(' ').map((x) => x[0]).slice(0, 2).join('');
 
   // Patient chip
   api.patient().then((p) => {
@@ -214,7 +240,7 @@ async function startSession() {
     $('#patient-chip-sub').textContent = `${p.age} · ${p.room} · NL-200`;
     $('#patient-avatar').textContent = p.name.split(' ').map((x) => x[0]).slice(0, 2).join('');
     $('#patient-avatar').style.background = p.avatar_color || 'var(--accent-2)';
-  }).catch(() => { });
+  }).catch(() => { /* non-fatal — banner keeps working */ });
 
   // Active alert count
   api.alertsSummary().then((s) => {
@@ -225,16 +251,19 @@ async function startSession() {
       badge.textContent = active;
       badge.classList.toggle('hidden', active === 0);
     }
-    if (s.recent && s.recent[0]) updateBanner({ name: 'Margaret\'s NeuroLink Band', online: true, battery: null, last_seen: s.recent[0].ts });
-  }).catch(() => { });
+  }).catch(() => { /* non-fatal */ });
 
   api.latest().then((l) => {
     if (l && l.device) updateBanner(l.device);
-  }).catch(() => { });
+  }).catch(() => { /* non-fatal */ });
 
   connectWS();
-  if (!location.hash) location.hash = '#/overview';
-  navigate();
+
+  // Single navigation: set the default hash without firing a second render.
+  if (!location.hash || location.hash === '#' || location.hash === '#/') {
+    history.replaceState(null, '', '#/overview');
+  }
+  await navigate();
 }
 
 // keep relative timestamps fresh
