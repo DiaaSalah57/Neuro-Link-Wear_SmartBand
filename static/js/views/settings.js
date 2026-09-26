@@ -1,8 +1,8 @@
 /**
  * NeuroLink Wear — Settings: appearance, account & session, system info.
  */
-import { api, auth } from '../api.js';
-import { $, $$, esc, icons, toast, confirmDialog } from '../ui.js';
+import { api, auth } from '../api.js?v=20260926-2';
+import { $, $$, esc, icons, toast, confirmDialog } from '../ui.js?v=20260926-2';
 
 export default {
   async render(root) {

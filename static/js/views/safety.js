@@ -2,14 +2,14 @@
  * NeuroLink Wear — Safety & Emergency: live GPS map, incident timeline with
  * inactivity alerts, and one-click emergency contact dispatch.
  */
-import { api } from '../api.js';
-import { store } from '../store.js';
-import { onWS } from '../ws.js';
+import { api } from '../api.js?v=20260926-2';
+import { store } from '../store.js?v=20260926-2';
+import { onWS } from '../ws.js?v=20260926-2';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, fmtTime,
   emptyState, skeletonCards, typeIcon, confirmDialog,
-} from '../ui.js';
-import { createMap } from '../map.js';
+} from '../ui.js?v=20260926-2';
+import { createMap } from '../map.js?v=20260926-2';
 
 let unsubWS = null;
 let mapCtl = null;
@@ -144,7 +144,7 @@ async function refreshMap() {
 function openDispatchModal(alert) {
   api.contacts().then((contacts) => {
     const dispatchable = contacts.filter((c) => c.can_dispatch);
-    import('../ui.js').then(({ openModal, closeModal }) => {
+    import('../ui.js?v=20260926-2').then(({ openModal, closeModal }) => {
       openModal({
         title: 'Dispatch emergency contacts',
         wide: true,

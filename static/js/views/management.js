@@ -3,11 +3,11 @@
  * CRUD for emergency contacts, wearable pairing + MQTT config,
  * personalized health thresholds, patient profile and (admin) team users.
  */
-import { api, auth } from '../api.js';
+import { api, auth } from '../api.js?v=20260926-2';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, confirmDialog,
   emptyState, skeletonLines, fmtRelative,
-} from '../ui.js';
+} from '../ui.js?v=20260926-2';
 
 let activeTab = 'contacts';
 const isAdmin = () => auth.user && auth.user.role === 'admin';

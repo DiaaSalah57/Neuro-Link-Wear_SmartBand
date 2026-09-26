@@ -96,6 +96,21 @@ app.add_middleware(
 app.include_router(api_router)
 
 
+@app.middleware("http")
+async def no_stale_assets(request, call_next):
+    """
+    Never let a browser or proxy serve stale SPA code — stale JS was the root
+    cause of a sign-in loop (old client missing the proxy-proof auth path).
+    """
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static") or path == "/" or path.endswith(".js") or path.endswith(".css"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
 @app.get("/api/health")
 def health():
     with get_db() as db:

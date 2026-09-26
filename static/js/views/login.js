@@ -1,8 +1,8 @@
 /**
  * NeuroLink Wear — login view.
  */
-import { api, auth } from '../api.js';
-import { $, toast } from '../ui.js';
+import { api, auth } from '../api.js?v=20260926-2';
+import { $, toast } from '../ui.js?v=20260926-2';
 
 export default {
   render() {
@@ -29,6 +29,9 @@ export default {
       submit.textContent = 'Signing in…';
       try {
         const res = await api.login($('#login-email').value.trim(), $('#login-password').value);
+        if (!res || !res.token || !res.user) {
+          throw new Error('Unexpected server response — please retry');
+        }
         auth.set(res.token, res.user);
         toast('success', `Welcome, ${res.user.name.split(' ')[0]}`, 'Secure session started — it will persist for 30 days.');
         window.dispatchEvent(new CustomEvent('nlw:login'));
