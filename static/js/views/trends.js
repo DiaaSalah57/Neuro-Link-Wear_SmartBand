@@ -3,12 +3,12 @@
  * interactive time-series charts (HRV, temperature, stress, HR) with
  * date-range filters and daily activity summaries.
  */
-import { api } from '../api.js?v=20260926-2';
+import { api } from '../api.js?v=20260926-5';
 import {
   $, $$, esc, icons, fmtNum, fmtDate, skeletonChart, skeletonCards,
   emptyState,
-} from '../ui.js?v=20260926-2';
-import { lineChart, barChart, donutChart } from '../charts.js?v=20260926-2';
+} from '../ui.js?v=20260926-5';
+import { lineChart, barChart, donutChart } from '../charts.js?v=20260926-5';
 
 let rangeHours = 24;
 
@@ -27,6 +27,7 @@ function statTile({ label, value, unit = '', delta = null, deltaLabel = 'vs prev
 }
 
 async function renderCharts() {
+  if (!document.getElementById('chart-hrv')) return;
   const histBox = $('#chart-vitals');
   const hrvBox = $('#chart-hrv');
   const stressBox = $('#chart-stress');
@@ -79,6 +80,7 @@ async function renderCharts() {
 }
 
 async function renderActivity() {
+  if (!document.getElementById('chart-activity')) return;
   const box = $('#chart-activity');
   const donut = $('#chart-activity-donut');
   if (box) box.innerHTML = skeletonChart();

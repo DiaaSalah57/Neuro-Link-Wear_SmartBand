@@ -3,11 +3,11 @@
  * CRUD for emergency contacts, wearable pairing + MQTT config,
  * personalized health thresholds, patient profile and (admin) team users.
  */
-import { api, auth } from '../api.js?v=20260926-2';
+import { api, auth } from '../api.js?v=20260926-5';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, confirmDialog,
   emptyState, skeletonLines, fmtRelative,
-} from '../ui.js?v=20260926-2';
+} from '../ui.js?v=20260926-5';
 
 let activeTab = 'contacts';
 const isAdmin = () => auth.user && auth.user.role === 'admin';
@@ -66,6 +66,7 @@ function contactModal(existing = null) {
 }
 
 async function renderContacts(box) {
+  if (!box || !box.isConnected) return;
   box.innerHTML = `<div class="card card-pad">${skeletonLines(5)}</div>`;
   let contacts;
   try {
@@ -227,6 +228,7 @@ function deviceModal(existing = null) {
 }
 
 async function renderDevices(box) {
+  if (!box || !box.isConnected) return;
   box.innerHTML = `<div class="card card-pad">${skeletonLines(5)}</div>`;
   const devices = await api.devices().catch(() => []);
   box.innerHTML = `
@@ -303,6 +305,7 @@ async function renderDevices(box) {
 
 /* ────────────────────────────────── Thresholds ──────────────────────── */
 async function renderThresholds(box) {
+  if (!box || !box.isConnected) return;
   box.innerHTML = `<div class="card card-pad">${skeletonLines(6)}</div>`;
   const t = await api.thresholds().catch(() => null);
   if (!t) {
@@ -377,7 +380,8 @@ async function renderThresholds(box) {
     $('#th-fall-enabled').checked = true;
     toast('info', 'Reset to recommended values', 'Press Save to apply.');
   };
-  $('#th-save').onclick = async (e) => {
+  $('#th-save').onclick = async () => {
+    const saveBtn = $('#th-save');
     const body = {
       hr_low: +$('#th-hr-low').value, hr_high: +$('#th-hr-high').value,
       spo2_low: +$('#th-spo2').value, temp_high: +$('#th-temp-high').value,
@@ -386,7 +390,7 @@ async function renderThresholds(box) {
       fall_accel: +$('#th-fall').value, fall_enabled: $('#th-fall-enabled').checked,
       inactivity_minutes: +$('#th-inact').value,
     };
-    e.currentTarget.disabled = true;
+    saveBtn.disabled = true;
     try {
       await api.updateThresholds(body);
       $('#th-saved').textContent = `Saved · thresholds updated ${new Date().toLocaleTimeString()}`;
@@ -394,7 +398,7 @@ async function renderThresholds(box) {
     } catch (err) {
       toast('error', 'Save failed', err.message);
     } finally {
-      e.currentTarget.disabled = false;
+      saveBtn.disabled = false;
     }
   };
 }
@@ -446,6 +450,7 @@ function userModal(existing = null) {
 }
 
 async function renderUsers(box) {
+  if (!box || !box.isConnected) return;
   if (!isAdmin()) {
     box.innerHTML = emptyState({ icon: icons.users, title: 'Admins only', body: 'Team management is restricted to administrator accounts.' });
     return;
@@ -492,6 +497,7 @@ async function renderUsers(box) {
 
 /* ──────────────────────────────────── Patient ──────────────────────── */
 async function renderPatient(box) {
+  if (!box || !box.isConnected) return;
   const p = await api.patient().catch(() => null);
   if (!p) { box.innerHTML = emptyState({ icon: icons.users, title: 'Profile unavailable' }); return; }
   box.innerHTML = `

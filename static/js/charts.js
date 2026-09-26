@@ -2,7 +2,7 @@
  * NeuroLink Wear — dependency-free interactive SVG charts:
  * multi-series line/area with hover crosshair + tooltip, sparklines, bars.
  */
-import { esc, fmtTime, fmtDateTime } from './ui.js?v=20260926-2';
+import { esc, fmtTime, fmtDateTime } from './ui.js?v=20260926-5';
 
 function niceTicks(min, max, count = 4) {
   if (min === max) { min -= 1; max += 1; }

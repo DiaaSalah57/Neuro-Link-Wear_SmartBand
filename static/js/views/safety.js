@@ -2,14 +2,14 @@
  * NeuroLink Wear — Safety & Emergency: live GPS map, incident timeline with
  * inactivity alerts, and one-click emergency contact dispatch.
  */
-import { api } from '../api.js?v=20260926-2';
-import { store } from '../store.js?v=20260926-2';
-import { onWS } from '../ws.js?v=20260926-2';
+import { api } from '../api.js?v=20260926-5';
+import { store } from '../store.js?v=20260926-5';
+import { onWS } from '../ws.js?v=20260926-5';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, fmtTime,
   emptyState, skeletonCards, typeIcon, confirmDialog,
-} from '../ui.js?v=20260926-2';
-import { createMap } from '../map.js?v=20260926-2';
+} from '../ui.js?v=20260926-5';
+import { createMap } from '../map.js?v=20260926-5';
 
 let unsubWS = null;
 let mapCtl = null;
@@ -54,6 +54,7 @@ function timelineItem(a) {
 
 async function loadTimeline() {
   const box = $('#safety-timeline');
+  if (!box) return;
   box.innerHTML = `<div class="skeleton skeleton-card" style="height:120px"></div>
     <div class="skeleton skeleton-card" style="height:120px"></div>`;
   const hours = range === 'today' ? 24 : range === 'week' ? 24 * 7 : 24 * 30;
@@ -144,7 +145,7 @@ async function refreshMap() {
 function openDispatchModal(alert) {
   api.contacts().then((contacts) => {
     const dispatchable = contacts.filter((c) => c.can_dispatch);
-    import('../ui.js?v=20260926-2').then(({ openModal, closeModal }) => {
+    import('../ui.js?v=20260926-5').then(({ openModal, closeModal }) => {
       openModal({
         title: 'Dispatch emergency contacts',
         wide: true,
@@ -350,7 +351,10 @@ export default {
     $('#panel-dispatch').onclick = () => openDispatchModal(null);
     $('#panel-edit-contacts').onclick = () => { location.hash = '#/management?tab=contacts'; };
 
-    await Promise.all([loadTimeline(), refreshMap(), loadDispatchLog()]);
+    // Loaders run in the background: never block navigation on slow map/CDN work.
+    loadTimeline().catch(() => {});
+    refreshMap().catch(() => {});
+    loadDispatchLog().catch(() => {});
 
     // contacts count + inactivity monitor
     api.contacts().then((cs) => {
@@ -383,7 +387,7 @@ export default {
         tickInactivity(msg.data);
         if (mapCtl && msg.data.lat) mapCtl.update(msg.data.lat, msg.data.lng);
       } else if (msg.type === 'alert') {
-        loadTimeline();
+        loadTimeline().catch(() => {});
         const st = $('#safety-status');
         if (st && msg.data.severity === 'critical') {
           st.className = 'notif-banner danger';

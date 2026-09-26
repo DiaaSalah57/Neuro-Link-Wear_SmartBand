@@ -167,14 +167,19 @@ export function closeModal() {
 /** Confirm dialog returning a promise. */
 export function confirmDialog(title, body, confirmLabel = 'Delete') {
   return new Promise((resolve) => {
+    let decided = false;
     openModal({
       title,
       body: `<p class="muted" style="font-size:13.5px">${body}</p>`,
       footer: `
         <button class="btn ghost" data-modal-close>Cancel</button>
         <button class="btn danger" id="confirm-yes">${confirmLabel}</button>`,
-      onClose: () => resolve(false),
+      onClose: () => { if (!decided) resolve(false); },
     });
-    $('#confirm-yes').onclick = () => { closeModal(); resolve(true); };
+    $('#confirm-yes').onclick = () => {
+      decided = true;
+      closeModal();
+      resolve(true);
+    };
   });
 }

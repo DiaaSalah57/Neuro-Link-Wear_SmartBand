@@ -12,7 +12,7 @@ function loadLeaflet() {
     s.onload = () => (window.L ? resolve(window.L) : reject(new Error('Leaflet missing')));
     s.onerror = () => reject(new Error('Leaflet CDN unavailable'));
     document.head.appendChild(s);
-    setTimeout(() => reject(new Error('Leaflet load timeout')), 8000);
+    setTimeout(() => reject(new Error('Leaflet load timeout')), 3000);
   });
   return leafletPromise;
 }

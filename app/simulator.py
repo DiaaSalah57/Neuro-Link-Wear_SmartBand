@@ -99,9 +99,25 @@ class WearableSimulator:
         return "baseline", 0.0
 
     def force_phase(self, phase: str, seconds: float = 30.0) -> None:
-        """Manually drive the simulator into a scenario phase (demo controls)."""
+        """Manually drive the simulator into a scenario phase (demo controls).
+
+        Also snaps the smoothed vitals to the scenario targets so the demo
+        reacts within one tick (~2 s) instead of drifting for half a minute.
+        """
         self.override_phase = phase
         self.override_until = time.monotonic() + seconds
+        snapped = {
+            "baseline":  dict(hr=74,  spo2=97.4, temp=36.7,  gsr=0.3,  hrv=50, activity="Resting"),
+            "stress":    dict(hr=104, spo2=96.2, temp=36.9,  gsr=6.0,  hrv=16, activity="Resting"),
+            "fever":     dict(hr=92,  spo2=96.0, temp=38.25, gsr=0.95, hrv=33, activity="Resting"),
+            "desat":     dict(hr=70,  spo2=89.3, temp=36.4,  gsr=0.4,  hrv=46, activity="Resting"),
+            "fall":      dict(hr=122, spo2=95.4, temp=36.8,  gsr=2.4,  hrv=21, activity="Resting"),
+            "post_fall": dict(hr=94,  spo2=96.0, temp=36.8,  gsr=1.6,  hrv=30, activity="Resting"),
+            "walk":      dict(hr=96,  spo2=97.0, temp=36.9,  gsr=0.8,  hrv=40, activity="Walking"),
+        }.get(phase)
+        if snapped:
+            for key, val in snapped.items():
+                setattr(self, key, val)
 
     def _smooth(self, current: float, target: float, rate: float = 0.18) -> float:
         return current + (target - current) * rate + self.rng.gauss(0, rate * 1.6)
@@ -123,7 +139,8 @@ class WearableSimulator:
             self.activity = "Resting"
             t_hr = 104
             t_spo2, t_temp = 96.2, 36.9
-            t_gsr, t_hrv = 4.4, 18
+            # index ≈ 0.65 — crosses the 0.60 High Stress threshold (4.4µS/18ms scored only 0.58)
+            t_gsr, t_hrv = 6.0, 16
         elif phase == "walk":
             self.activity = "Walking"
             t_hr, t_spo2, t_temp = 96, 97.0, 36.9

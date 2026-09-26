@@ -2,12 +2,12 @@
  * NeuroLink Wear — AI Insights & Alerts: anomaly alerts with severity badges,
  * LLM plain-language explanations, recommendations, plus the AI summary feed.
  */
-import { api } from '../api.js?v=20260926-2';
-import { onWS } from '../ws.js?v=20260926-2';
+import { api } from '../api.js?v=20260926-5';
+import { onWS } from '../ws.js?v=20260926-5';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, emptyState,
   typeIcon, skeletonCards, confirmDialog,
-} from '../ui.js?v=20260926-2';
+} from '../ui.js?v=20260926-5';
 
 let unsubWS = null;
 let state = { status: 'all', severity: 'all', type: 'all' };
@@ -97,6 +97,7 @@ function summaryCard(s) {
 
 async function loadAlerts() {
   const box = $('#alerts-list');
+  if (!box) return;
   box.innerHTML = `<div class="grid" style="gap:12px">
     <div class="skeleton skeleton-card" style="height:190px"></div>
     <div class="skeleton skeleton-card" style="height:190px"></div>
@@ -121,7 +122,7 @@ async function loadAlerts() {
       state = { status: 'all', severity: 'all', type: 'all' };
       $$('.chip-row .chip').forEach((c) => c.classList.remove('active'));
       $(`[data-filter="status"][data-value="all"]`)?.classList.add('active');
-      loadAlerts();
+      loadAlerts().catch(() => {});
     };
     return;
   }
@@ -138,12 +139,12 @@ async function loadAlerts() {
           btn.disabled = true;
           await api.acknowledgeAlert(id);
           toast('success', 'Alert acknowledged', 'Your name is now attached to the incident timeline.');
-          loadAlerts();
+          loadAlerts().catch(() => {});
         } else if (act === 'resolve') {
           if (await confirmDialog('Resolve this alert?', 'This marks the incident as handled and moves it out of the active queue.', 'Mark resolved')) {
             await api.resolveAlert(id);
             toast('success', 'Alert resolved', 'Moved to the resolved incidents log.');
-            loadAlerts();
+            loadAlerts().catch(() => {});
           }
         } else if (act === 'dispatch') {
           sessionStorage.setItem('nlw_dispatch_alert', JSON.stringify({ id, title: alert.title }));
@@ -247,13 +248,14 @@ export default {
           chip.classList.add('active');
           state.status = chip.dataset.value;
         }
-        loadAlerts();
+        loadAlerts().catch(() => {});
       };
     });
 
-    $('#alerts-refresh').onclick = () => loadAlerts();
-    $('#alerts-generate').onclick = async (e) => {
-      e.currentTarget.disabled = true;
+    $('#alerts-refresh').onclick = () => loadAlerts().catch(() => {});
+    $('#alerts-generate').onclick = async () => {
+      const genBtn = $('#alerts-generate');
+      genBtn.disabled = true;
       try {
         await api.generateSummary();
         toast('success', 'AI summary ready', 'A fresh analysis was added to the summaries tab.');
@@ -265,12 +267,13 @@ export default {
       } catch (err) {
         toast('error', 'Generation failed', err.message);
       } finally {
-        e.currentTarget.disabled = false;
+        genBtn.disabled = false;
       }
     };
 
     async function loadSummaries() {
       const box = $('#summaries-list');
+      if (!box) return;
       box.innerHTML = skeletonCards(1);
       try {
         const res = await api.summaries(12);
@@ -286,7 +289,7 @@ export default {
     if (state.tab === 'insights') loadSummaries();
 
     unsubWS = onWS((msg) => {
-      if (msg.type === 'alert' && msg.data && state.status === 'active') loadAlerts();
+      if (msg.type === 'alert' && msg.data && state.status === 'active') loadAlerts().catch(() => {});
     });
   },
   destroy() {

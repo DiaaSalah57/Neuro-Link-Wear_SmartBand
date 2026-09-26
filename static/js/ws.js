@@ -1,7 +1,7 @@
 /**
  * NeuroLink Wear — WebSocket client with auto-reconnect + offline fallback.
  */
-import { auth } from './api.js?v=20260926-2';
+import { auth } from './api.js?v=20260926-5';
 
 const listeners = new Set();
 let ws = null;
@@ -21,7 +21,10 @@ function wsUrl() {
 
 function emit(message) {
   listeners.forEach((fn) => {
-    try { fn(message); } catch (e) { console.error('[ws listener]', e); }
+    try {
+      const r = fn(message);
+      if (r && typeof r.catch === 'function') r.catch((e) => console.error('[ws listener]', e));
+    } catch (e) { console.error('[ws listener]', e); }
   });
 }
 
@@ -30,7 +33,7 @@ function startPollFallback() {
   if (pollTimer) return;
   pollTimer = setInterval(async () => {
     try {
-      const mod = await import('./api.js?v=20260926-2');
+      const mod = await import('./api.js?v=20260926-5');
       const latest = await mod.api.latest();
       emit({ type: 'telemetry', data: latest });
       emit({ type: 'device_status', data: latest.device || {} });

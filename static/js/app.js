@@ -2,21 +2,21 @@
  * NeuroLink Wear — application shell: routing, theme, sticky device banner,
  * global SOS flow and live WebSocket fan-out.
  */
-import { api, auth } from './api.js?v=20260926-2';
-import { store } from './store.js?v=20260926-2';
-import { connectWS, disconnectWS, onWS, wsState } from './ws.js?v=20260926-2';
+import { api, auth } from './api.js?v=20260926-5';
+import { store } from './store.js?v=20260926-5';
+import { connectWS, disconnectWS, onWS, wsState } from './ws.js?v=20260926-5';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, fmtRelative, fmtDateTime,
   confirmDialog,
-} from './ui.js?v=20260926-2';
+} from './ui.js?v=20260926-5';
 
-import loginView from './views/login.js?v=20260926-2';
-import overviewView from './views/overview.js?v=20260926-2';
-import alertsView from './views/alerts.js?v=20260926-2';
-import safetyView from './views/safety.js?v=20260926-2';
-import trendsView from './views/trends.js?v=20260926-2';
-import managementView from './views/management.js?v=20260926-2';
-import settingsView from './views/settings.js?v=20260926-2';
+import loginView from './views/login.js?v=20260926-5';
+import overviewView from './views/overview.js?v=20260926-5';
+import alertsView from './views/alerts.js?v=20260926-5';
+import safetyView from './views/safety.js?v=20260926-5';
+import trendsView from './views/trends.js?v=20260926-5';
+import managementView from './views/management.js?v=20260926-5';
+import settingsView from './views/settings.js?v=20260926-5';
 
 const routes = {
   overview: overviewView,
@@ -92,7 +92,17 @@ function parseHash() {
   return { route: routes[path] ? path : 'overview', params };
 }
 
-async function navigate() {
+// Serialize navigations: a slow view render must finish (and its cleanup run)
+// before the next navigation destroys/replaces it — otherwise an in-flight
+// render can re-subscribe WS handlers after destroy() (null-DOM crash class).
+let navChain = Promise.resolve();
+
+function navigate() {
+  navChain = navChain.then(doNavigate).catch((err) => console.error('[navigate]', err));
+  return navChain;
+}
+
+async function doNavigate() {
   if (!auth.user) return;
   const { route, params } = parseHash();
   if (currentView && currentView.destroy) currentView.destroy();
