@@ -2,12 +2,12 @@
  * NeuroLink Wear — AI Insights & Alerts: anomaly alerts with severity badges,
  * LLM plain-language explanations, recommendations, plus the AI summary feed.
  */
-import { api } from '../api.js?v=20260926-7';
-import { onWS } from '../ws.js?v=20260926-7';
+import { api } from '../api.js?v=20260926-8';
+import { onWS } from '../ws.js?v=20260926-8';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, emptyState,
   typeIcon, skeletonCards, confirmDialog,
-} from '../ui.js?v=20260926-7';
+} from '../ui.js?v=20260926-8';
 
 let unsubWS = null;
 let state = { status: 'all', severity: 'all', type: 'all' };

@@ -44,6 +44,7 @@ def seed_all() -> None:
         _seed_summaries(db)
         _seed_activity(db)
         _seed_locations(db)
+    _seed_calibration()
 
 
 # ── Users ────────────────────────────────────────────────────────────────────
@@ -524,3 +525,16 @@ def _seed_locations(db) -> None:
     db.executemany(
         "INSERT INTO location_history(ts,lat,lng,activity,speed) VALUES(?,?,?,?,?)", rows
     )
+
+def _seed_calibration() -> None:
+    """Demo calibration: auto-fit from the seeded 24 h + two guided references."""
+    try:
+        from .calibration import add_reference, auto_fit
+        fit = auto_fit(1, hours=24)
+        add_reference("oral_temp", 36.9, band_value=36.4,
+                      note="Morning oral thermometer reading (seeded demo)")
+        add_reference("pulse_ox", 97.0, band_value=96.6,
+                      note="Clinical oximeter spot-check (seeded demo)")
+        print(f"[seed] calibration auto-fit from {fit['points']} vitals + 2 guided references")
+    except Exception as e:
+        print(f"[seed] calibration skipped: {e}")

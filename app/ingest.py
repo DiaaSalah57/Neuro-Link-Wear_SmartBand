@@ -10,6 +10,7 @@ detected over REST.
 """
 from __future__ import annotations
 
+from .calibration import observe as cal_observe
 from .db import get_db, one
 from .detection import evaluate, stress_score
 from .insights import now_iso
@@ -55,10 +56,11 @@ async def process_device_payload(d: dict, source: str = "device") -> dict:
     reading = build_reading(d)
     reading["stress_score"] = stress_score(reading["gsr"], reading["hrv"])
 
+    cal = cal_observe(reading)          # personal baselines adapt online
     with get_db() as db:
         th = one(db.execute("SELECT * FROM thresholds WHERE patient_id=1")) or {}
     patient = {"name": "Margaret Thompson", "age": 78}
-    events = evaluate(reading, th, patient)
+    events = evaluate(reading, th, patient, cal)
 
     sim = get_simulator()
     created = []

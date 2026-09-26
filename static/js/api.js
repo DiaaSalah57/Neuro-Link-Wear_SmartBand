@@ -185,6 +185,11 @@ export const api = {
   createUser: (body) => request('/users', { method: 'POST', body }),
   updateUser: (id, body) => request(`/users/${id}`, { method: 'PUT', body }),
   deleteUser: (id) => request(`/users/${id}`, { method: 'DELETE' }),
+  // calibration (equation-based AI baselines)
+  getCalibration: () => request('/calibration'),
+  autoFitCalibration: () => request('/calibration/auto-fit', { method: 'POST', body: {} }),
+  addCalibrationRef: (payload) => request('/calibration/reference', { method: 'POST', body: payload }),
+  updateCalibration: (payload) => request('/calibration', { method: 'PUT', body: payload }),
   // demo
   demoTrigger: (kind) => request('/demo/trigger', { method: 'POST', query: { kind } }),
 };

@@ -26,6 +26,8 @@ from .db import get_db, one, rows
 from .insights import build_daily_summary, generate_explanation, now_iso
 from .simulator import get_simulator
 from . import mqtt as mqtt_mod
+from . import calibration as cal_mod
+from . import equations as eq_mod
 from .ingest import process_device_payload
 
 router = APIRouter(prefix="/api")
@@ -537,6 +539,67 @@ def test_connection(device_id: int, user: dict = Depends(require_staff)):
         "message": res["message"],
         "return_code": res.get("return_code"),
     }
+
+
+# ────────────────────────────────────────────────────── calibration ────────
+class ReferenceIn(BaseModel):
+    kind: str
+    value: float
+    band_value: float | None = None
+    note: str = ""
+
+
+class CalibrationManualIn(BaseModel):
+    baselines: dict | None = None
+    personal_rules: dict | None = None
+
+
+@router.get("/calibration")
+def get_calibration(user: dict = Depends(require_staff)):
+    """Personal calibration state: baselines, sources, confidence, live scores."""
+    state = cal_mod.get_calibration(1)
+    with get_db() as db:
+        latest = one(db.execute("SELECT * FROM vitals ORDER BY ts DESC, id DESC LIMIT 1"))
+    live = None
+    if latest:
+        s_eq = eq_mod.stress_index(latest["gsr"], latest["hrv"], latest["heart_rate"],
+                                   state["baselines"], latest.get("activity") or "Resting")
+        f_eq = eq_mod.fever_score(latest["temperature"], latest["heart_rate"], state["baselines"],
+                                  state.get("temp_prev"))
+        live = {
+            "stress": s_eq,
+            "fever": f_eq,
+            "hr": eq_mod.hr_mismatch(latest["heart_rate"], latest.get("activity") or "Resting", 78, state["baselines"]),
+            "spo2_calibrated": round((latest["spo2"] or 0) + state["baselines"].get("spo2_offset", 0.0), 1),
+        }
+    return {
+        "state": state,
+        "floors": eq_mod.CLINICAL_FLOORS,
+        "reference_kinds": cal_mod.REFERENCE_KINDS,
+        "references": cal_mod.list_references(1),
+        "live": live,
+    }
+
+
+@router.post("/calibration/auto-fit")
+def calibration_auto_fit(user: dict = Depends(require_staff)):
+    """Snap baselines to robust percentiles of the last 24 h of vitals."""
+    return cal_mod.auto_fit(1, hours=24)
+
+
+@router.post("/calibration/reference")
+def calibration_reference(body: ReferenceIn, user: dict = Depends(require_staff)):
+    """Apply one guided reference measurement (oral temp, pulse ox, resting HR/HRV)."""
+    try:
+        return cal_mod.add_reference(body.kind, body.value, body.band_value, body.note, 1)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.put("/calibration")
+def calibration_manual(body: CalibrationManualIn, user: dict = Depends(require_staff)):
+    """Manual slider updates to baselines / personal rules (floors not editable)."""
+    return cal_mod.apply_manual(body.model_dump(exclude_none=True), 1)
 
 
 # ───────────────────────────────────────────────────────── thresholds ───────

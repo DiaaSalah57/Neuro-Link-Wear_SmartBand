@@ -9,7 +9,7 @@ Real-time IoT health & safety monitoring for elderly individuals, their families
 | Area | Features |
 |---|---|
 | **Real-time Telemetry** | Live WebSocket stream + cards for Heart Rate, SpO₂, skin temperature, GSR stress index and IMU motion status (activity state, accelerometer / gyroscope magnitudes, steps) |
-| **AI Insights & Alerts** | Anomaly detection for **High Stress, Fever, Low Oxygen, Fall Detection** (plus tachycardia, bradycardia, fatigue, inactivity) with severity badges, plain-language AI explanations and actionable recommendations |
+| **AI Insights & Alerts** | Anomaly detection for **High Stress, Fever, Low Oxygen, Fall Detection** (plus tachycardia, bradycardia, fatigue, inactivity) with severity badges, plain-language AI explanations and actionable recommendations — powered by transparent **equations + per-patient calibration** (no training dataset): automatic baselines, guided reference measurements and two-tier safety thresholds |
 | **Emergency Escalation** | Safety view with incident timeline & timestamps, inactivity alerts, live GPS map (OpenStreetMap) with incident markers, and one-click emergency contact dispatch with delivery log |
 | **Historical Trends** | Interactive SVG time-series charts (HRV, temperature & SpO₂, stress vs heart rate) with date-range filters (24 h / 48 h / 7 d / 30 d), 14-day activity summaries and clinical threshold overlays |
 | **Caregiver & Device Management** | Full CRUD for emergency contacts, wearable pairing with MQTT broker configuration (+ connection test), personalized health alert thresholds, wearer profile and role-based care-team users |
@@ -63,7 +63,7 @@ Simulator / ingest API  ─┘        │            │
 ### Data flow
 
 1. The **simulator** (or real hardware via `POST /api/telemetry/ingest?device_key=…`, or the MQTT bridge in `main.py`) emits readings every 2 s.
-2. `detection.py` evaluates each reading against the patient's **personalized thresholds** (editable in Management → Alert Thresholds), reproducing the stress-score feature engineering from the original ML `pipeline.py`.
+2. `detection.py` evaluates each reading against the patient's **personalized thresholds** (editable in Management → Alert Thresholds) **and** a calibrated equation layer — `equations.py` (stress index with tonic/phasic EDA split, core-temperature estimate, hypoxic-burden integral, fall physics, expected-HR model) + `calibration.py` (per-patient baselines learned automatically from the stream, plus guided reference points: oral thermometer, clinical pulse-oximeter, resting HR/HRV). A condition fires when either the clinical tier (fixed safety floors that calibration can never move) or the personal σ-tier (z ≥ threshold vs the wearer's own baseline) triggers — see Management → **Calibration**. No training dataset is involved; the same formulas are firmware-reusable on the ESP32.
 3. On detection, `insights.py` produces a plain-language **AI explanation + recommendations** (hosted LLM via `HF_TOKEN` when configured, with a robust local narrative fallback).
 4. The alert is persisted, broadcast on `/ws`, and appears instantly in the dashboard with severity badge, actions and GPS.
 5. Emergency **dispatch** sends to chosen contacts (SMS/call/app) and is logged per incident.

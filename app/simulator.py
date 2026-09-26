@@ -17,6 +17,7 @@ import time
 from datetime import datetime, timezone
 
 from .detection import evaluate, inactivity_event, stress_score, event_alert_payload
+from .calibration import observe as cal_observe
 from .db import get_db, one, rows
 from .insights import generate_explanation
 
@@ -104,6 +105,7 @@ class WearableSimulator:
         Also snaps the smoothed vitals to the scenario targets so the demo
         reacts within one tick (~2 s) instead of drifting for half a minute.
         """
+        self.last_alert_at.clear()   # demo/drill intent: the alert must show every time
         self.override_phase = phase
         self.override_until = time.monotonic() + seconds
         snapped = {
@@ -320,7 +322,8 @@ class WearableSimulator:
                 patient = {"name": "Margaret Thompson", "age": 78}
                 with get_db() as db:
                     th = one(db.execute("SELECT * FROM thresholds WHERE patient_id=1")) or {}
-                events = evaluate(reading, th, patient)
+                cal = cal_observe(reading)          # personal baselines adapt online
+                events = evaluate(reading, th, patient, cal)
 
                 alerts = []
                 for ev in events:

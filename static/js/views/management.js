@@ -1,13 +1,14 @@
 /**
  * NeuroLink Wear — Caregiver & Device Management:
  * CRUD for emergency contacts, wearable pairing + MQTT config,
- * personalized health thresholds, patient profile and (admin) team users.
+ * personalized health thresholds, patient profile, (admin) team users
+ * and the calibration lab (equation-based AI baselines).
  */
-import { api, auth } from '../api.js?v=20260926-7';
+import { api, auth } from '../api.js?v=20260926-8';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, confirmDialog,
   emptyState, skeletonLines, fmtRelative,
-} from '../ui.js?v=20260926-7';
+} from '../ui.js?v=20260926-8';
 
 let activeTab = 'contacts';
 const isAdmin = () => auth.user && auth.user.role === 'admin';
@@ -555,6 +556,225 @@ async function renderPatient(box) {
   }
 }
 
+/* ──────────────────────────────── Calibration ──────────────────────────── */
+async function renderCalibration(box) {
+  box.innerHTML = `<div class="panel">${skeletonLines(6)}</div>`;
+  let cal;
+  try {
+    cal = await api.getCalibration();
+  } catch (err) {
+    box.innerHTML = `
+      <div class="panel" style="border-color:var(--critical,#e5484d)">
+        <h3>Calibration unavailable</h3>
+        <p class="muted" style="margin:0">${esc(err?.message || String(err))}</p>
+      </div>`;
+    return;
+  }
+  const s = cal.state, b = s.baselines, rules = s.personal_rules, floors = cal.floors, live = cal.live;
+  const srcLabel = { prior: 'Literature prior', auto: 'Auto-calibrated', guided: 'Guided reference', manual: 'Manual' };
+  const srcCls = { prior: 'badge neutral', auto: 'badge ok', guided: 'badge medium', manual: 'badge neutral' };
+  const badgeFor = (k) => `<span class="${srcCls[s.sources?.[k]] || 'badge neutral'}">${srcLabel[s.sources?.[k]] || 'Prior'}</span>`;
+  const bar = (z) => {
+    const w = Math.max(3, Math.min(100, 50 + (Number(z) || 0) * 18));
+    const col = z >= 2 ? '#e5484d' : z >= 1 ? '#f5a623' : '#30a46c';
+    return `<div class="cal-bar"><i style="display:block;height:100%;width:${w}%;background:${col};border-radius:4px"></i></div>`;
+  };
+  const fmtWhen = (ts) => { try { return new Date(ts).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return '—'; } };
+
+  box.innerHTML = `
+  <div class="panel">
+    <h3 style="margin:0 0 4px">Calibration — personalised equation baselines</h3>
+    <div class="row" style="align-items:center;gap:8px;margin-bottom:12px">
+      <span class="${s.status === 'active' ? 'badge ok' : 'badge neutral'}">${s.status === 'active' ? 'Calibrated' : 'Warming up'}</span>
+      <span class="badge neutral">${Math.round((s.confidence || 0) * 100)}% confidence · ${s.n_obs} samples</span>
+      <span style="flex:1"></span>
+      <button class="btn primary" id="cal-autofit">Auto-fit from 24 h data</button>
+    </div>
+    <p class="muted" style="margin:0 0 16px;max-width:820px">
+      The "AI" here is transparent physiology equations with per-patient calibration — no training dataset.
+      Baselines learn from the stream automatically; a few guided measurements (oral thermometer, clinical
+      pulse-oximeter, resting HR/HRV) add ground-truth offsets. <strong>Clinical safety floors never move.</strong>
+    </p>
+
+    <h4 style="margin:0 0 8px">Personal baselines</h4>
+    <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
+      ${[
+        ['hr_rest', 'Resting HR', 'bpm', 1],
+        ['hrv_rest', 'Resting HRV', 'ms', 1],
+        ['gsr_tonic', 'GSR tonic level', 'µS', 0.01],
+        ['gsr_mad', 'GSR noise (MAD)', 'µS', 0.01],
+        ['temp_skin', 'Skin temp (rest)', '°C', 0.1],
+        ['temp_offset', 'Skin→core offset', '°C', 0.05],
+        ['spo2_offset', 'SpO₂ band offset', '%', 0.5],
+        ['spo2_rest', 'Resting SpO₂', '%', 0.5],
+      ].map(([k, label, unit, step]) => `
+        <label class="field"><span>${label} <span class="muted">${unit}</span> ${badgeFor(k)}</span>
+          <input type="number" step="${step}" value="${Number(b[k]).toFixed(step < 0.1 ? 2 : step < 1 ? 1 : 0)}" data-cal-base="${k}">
+        </label>`).join('')}
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px;gap:12px">
+      <span class="muted" style="font-size:12px">Manual values stop auto-updating until you change them.</span>
+      <button class="btn ghost" id="cal-save">Save manual overrides</button>
+    </div>
+
+    <h4 style="margin:22px 0 8px">Guided reference measurements</h4>
+    <div class="form-grid">
+      <label class="field"><span>Measurement</span>
+        <select id="cal-ref-kind">
+          ${Object.entries(cal.reference_kinds).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
+        </select>
+      </label>
+      <label class="field"><span>Clinical reading</span>
+        <input type="number" step="0.1" id="cal-ref-value" placeholder="e.g. 36.9">
+      </label>
+      <label class="field"><span>Band reading at same moment (optional)</span>
+        <input type="number" step="0.1" id="cal-ref-band" placeholder="e.g. 36.4">
+      </label>
+      <label class="field"><span>Note (optional)</span>
+        <input type="text" id="cal-ref-note" placeholder="Morning reading">
+      </label>
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px;gap:12px">
+      <span class="muted" style="font-size:12px">Oral temp + band skin temp calibrates the personal skin→core offset.</span>
+      <button class="btn primary" id="cal-ref-add">Apply reference point</button>
+    </div>
+
+    ${(cal.references || []).length ? `
+      <h4 style="margin:22px 0 8px">Reference history</h4>
+      <div class="table-wrap"><table>
+        <thead><tr><th>When</th><th>Measurement</th><th>Value</th><th>Band</th><th>Applied as</th></tr></thead>
+        <tbody>${cal.references.map((r) => `
+          <tr>
+            <td>${fmtWhen(r.ts)}</td>
+            <td>${esc(String(r.kind).replace('_', ' '))}</td>
+            <td>${r.value}</td>
+            <td>${r.band_value ?? '—'}</td>
+            <td class="muted">${esc(String(r.applied || ''))}</td>
+          </tr>`).join('')}</tbody>
+      </table></div>` : ''}
+
+    <h4 style="margin:22px 0 8px">Live equations on the latest reading</h4>
+    ${live ? `
+    <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+      <div class="panel" style="margin:0">
+        <div class="row" style="align-items:center;gap:8px"><strong>Stress index</strong>
+          <span class="${live.stress.z_max >= rules.stress_z ? 'badge critical' : 'badge ok'}">
+            z_max ${live.stress.z_max}σ ${live.stress.z_max >= rules.stress_z ? '→ trigger' : '→ normal'}</span></div>
+        <div class="row" style="align-items:center;gap:8px;margin:8px 0"><span style="width:130px" class="muted">GSR phasic z</span>
+          <div style="flex:1;height:8px;background:rgba(128,128,128,.25);border-radius:4px">${bar(live.stress.terms.gsr_phasic_z)}</div>
+          <b style="width:44px;text-align:right">${live.stress.terms.gsr_phasic_z}</b></div>
+        <div class="row" style="align-items:center;gap:8px;margin:8px 0"><span style="width:130px" class="muted">HRV drop z</span>
+          <div style="flex:1;height:8px;background:rgba(128,128,128,.25);border-radius:4px">${bar(live.stress.terms.hrv_drop_z)}</div>
+          <b style="width:44px;text-align:right">${live.stress.terms.hrv_drop_z}</b></div>
+        <div class="row" style="align-items:center;gap:8px;margin:8px 0"><span style="width:130px" class="muted">HR rise z</span>
+          <div style="flex:1;height:8px;background:rgba(128,128,128,.25);border-radius:4px">${bar(live.stress.terms.hr_rise_z)}</div>
+          <b style="width:44px;text-align:right">${live.stress.terms.hr_rise_z}</b></div>
+        <div class="muted" style="font-size:12px;margin-top:6px">
+          S = clamp(0.5 + Σσ-evidence/5) → ${live.stress.calibrated} · legacy score ${live.stress.legacy}</div>
+      </div>
+      <div class="panel" style="margin:0">
+        <div class="row" style="gap:8px"><strong>Core-equivalent temperature</strong>${badgeFor('temp_offset')}</div>
+        <p style="margin:8px 0">T<sub>core</sub> ≈ ${Number(b.temp_gain ?? 1)}·T<sub>skin</sub> ${Number(b.temp_offset) >= 0 ? '+' : '−'} ${Math.abs(Number(b.temp_offset)).toFixed(2)}°C
+          → <strong>${live.fever.core_temp}°C</strong></p>
+        <div class="muted" style="font-size:12px">Fever floor (clinical, fixed): ${floors.temp_fever}°C core-equivalent</div>
+      </div>
+      <div class="panel" style="margin:0">
+        <div class="row" style="gap:8px"><strong>HR vs expected for activity</strong>${badgeFor('hr_rest')}</div>
+        <p style="margin:8px 0">Expected ${live.hr.hr_expected} bpm · deviation
+          <strong>${live.hr.deviation >= 0 ? '+' : ''}${live.hr.deviation} bpm</strong></p>
+        <div class="muted" style="font-size:12px">HR_exp = HR_rest<sub>personal</sub> + (activity demand × age factor)</div>
+      </div>
+      <div class="panel" style="margin:0">
+        <div class="row" style="gap:8px"><strong>SpO₂ calibrated</strong>${badgeFor('spo2_offset')}</div>
+        <p style="margin:8px 0">band + offset → <strong>${live.spo2_calibrated}%</strong>
+          · hypoxic burden ${s.hypoxic_burden ?? 0} %·min</p>
+        <div class="muted" style="font-size:12px">Burden = Σ·min of (92 − SpO₂)⁺ with decay · urgent floor ${floors.spo2_urgent}%</div>
+      </div>
+    </div>` : `<p class="muted">No readings yet — start the simulation in Settings to populate live equations.</p>`}
+
+    <h4 style="margin:22px 0 8px">Two-tier safety thresholds</h4>
+    <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
+      <div class="panel" style="margin:0">
+        <div class="row" style="gap:8px"><strong>Tier 1 · clinical floors</strong><span class="badge critical">Never personalised</span></div>
+        <ul class="muted" style="margin:8px 0 0 18px;padding:0;font-size:13px;line-height:2">
+          <li>SpO₂ &lt; ${floors.spo2_urgent}% → critical · &lt; ${floors.spo2_low}% → high</li>
+          <li>Core-equivalent temp ≥ ${floors.temp_fever}°C → fever</li>
+          <li>Fall impact ≥ ${floors.fall_impact_g}g with tumble ≥ ${floors.fall_gyro} rad/s</li>
+          <li>Resting HR ≥ ${floors.hr_max_absolute} or ≤ ${floors.hr_min_absolute} bpm</li>
+        </ul>
+      </div>
+      <div class="panel" style="margin:0">
+        <div class="row" style="gap:8px"><strong>Tier 2 · personal σ-rules</strong><span class="badge neutral">Editable</span></div>
+        <label class="field" style="margin:10px 0 4px"><span>Stress trigger at z ≥ <b id="cal-z-val">${rules.stress_z}</b>σ</span>
+          <input type="range" min="1" max="4" step="0.1" value="${rules.stress_z}" id="cal-z-slider"></label>
+        <label class="field" style="margin:10px 0 4px"><span>HRV drop at <b id="cal-hrv-val">${rules.hrv_drop_pct}</b>% below personal rest</span>
+          <input type="range" min="20" max="70" step="5" value="${rules.hrv_drop_pct}" id="cal-hrv-slider"></label>
+        <div class="muted" style="font-size:12px;margin-top:8px">A condition fires when EITHER tier fires — calibration can only add sensitivity.</div>
+      </div>
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px">
+      <button class="btn ghost" id="cal-rules-save">Save personal rules</button>
+    </div>
+  </div>`;
+
+  // ── wiring ──
+  const q = (sel) => box.querySelector(sel);
+  q('#cal-autofit').onclick = async () => {
+    try {
+      const res = await api.autoFitCalibration();
+      const diffs = Object.keys(res.after)
+        .filter((k) => Number(s.baselines[k]) !== Number(res.after[k]))
+        .map((k) => `${k}: ${s.baselines[k]} → ${res.after[k]}`);
+      toast('success', res.changed ? 'Auto-fit complete' : 'Baselines already stable',
+        res.changed ? `${res.points} readings · ${diffs.slice(0, 3).join(', ')}${diffs.length > 3 ? '…' : ''}` : `${res.points} readings`);
+      renderTab();
+    } catch (err) { toast('error', 'Auto-fit failed', err.message); }
+  };
+
+  q('#cal-save').onclick = async () => {
+    const baselines = {};
+    box.querySelectorAll('[data-cal-base]').forEach((inp) => {
+      const v = Number(inp.value);
+      if (Number.isFinite(v)) baselines[inp.dataset.calBase] = v;
+    });
+    try {
+      await api.updateCalibration({ baselines });
+      toast('success', 'Baselines saved');
+      renderTab();
+    } catch (err) { toast('error', 'Save failed', err.message); }
+  };
+
+  q('#cal-ref-add').onclick = async () => {
+    const kind = q('#cal-ref-kind').value;
+    const value = Number(q('#cal-ref-value').value);
+    const bandRaw = q('#cal-ref-band').value;
+    if (!Number.isFinite(value)) return toast('error', 'Missing value', 'Enter the measurement reading');
+    try {
+      const res = await api.addCalibrationRef({
+        kind, value,
+        band_value: bandRaw === '' ? null : Number(bandRaw),
+        note: q('#cal-ref-note').value,
+      });
+      toast('success', 'Reference applied', res.applied);
+      renderTab();
+    } catch (err) { toast('error', 'Reference failed', err.message); }
+  };
+
+  const zSlider = q('#cal-z-slider'), hrvSlider = q('#cal-hrv-slider');
+  if (zSlider) zSlider.oninput = () => { q('#cal-z-val').textContent = zSlider.value; };
+  if (hrvSlider) hrvSlider.oninput = () => { q('#cal-hrv-val').textContent = hrvSlider.value; };
+  const rulesSave = q('#cal-rules-save');
+  if (rulesSave) rulesSave.onclick = async () => {
+    try {
+      await api.updateCalibration({
+        personal_rules: { stress_z: Number(zSlider.value), hrv_drop_pct: Number(hrvSlider.value) },
+      });
+      toast('success', 'Personal rules saved');
+      renderTab();
+    } catch (err) { toast('error', 'Save failed', err.message); }
+  };
+}
+
 /* ─────────────────────────────────── router ────────────────────────── */
 async function renderTab() {
   const box = $('#mgmt-tab-content');
@@ -564,12 +784,13 @@ async function renderTab() {
   else if (activeTab === 'thresholds') await renderThresholds(box);
   else if (activeTab === 'team') await renderUsers(box);
   else if (activeTab === 'patient') await renderPatient(box);
+  else if (activeTab === 'calibration') await renderCalibration(box);
 }
 
 export default {
   async render(root, ctx) {
     const params = ctx.params || {};
-    if (params.tab && ['contacts', 'devices', 'thresholds', 'team', 'patient'].includes(params.tab)) {
+    if (params.tab && ['contacts', 'devices', 'thresholds', 'team', 'patient', 'calibration'].includes(params.tab)) {
       activeTab = params.tab;
     }
     root.innerHTML = `
@@ -584,6 +805,7 @@ export default {
         <button class="tab-btn ${activeTab === 'devices' ? 'active' : ''}" data-tab="devices">Devices &amp; MQTT</button>
         <button class="tab-btn ${activeTab === 'thresholds' ? 'active' : ''}" data-tab="thresholds">Alert thresholds</button>
         <button class="tab-btn ${activeTab === 'patient' ? 'active' : ''}" data-tab="patient">Wearer profile</button>
+        <button class="tab-btn ${activeTab === 'calibration' ? 'active' : ''}" data-tab="calibration">Calibration</button>
         <button class="tab-btn ${activeTab === 'team' ? 'active' : ''}" data-tab="team">Care team ${isAdmin() ? '' : '🔒'}</button>
       </div>
       <div id="mgmt-tab-content"></div>`;

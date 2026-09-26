@@ -234,3 +234,36 @@ node /tmp/domtest/session_persist.cjs
 ```
 
 Demo logins: `admin@neurolink.health` / `admin123` · `caregiver@neurolink.health` / `caregiver123`
+
+---
+
+## Build 2 — Calibration Engine (equations + personal calibration, no training dataset)
+
+**Date:** 2026-09-26 · replaces dataset-bound normalisation with transparent physiology
+equations (`app/equations.py`) + per-patient calibration (`app/calibration.py`).
+Two-tier safety: clinical floors are fixed constants; personal σ-rules only ADD triggers.
+
+### Backend — `calib_suite.py` (74 checks, run twice for idempotency)
+
+| Group | Checks | Result | Highlights |
+|-------|--------|--------|------------|
+| A. Equation library | 17 | ✅ PASS | stress index (tonic/phasic EDA split, z-terms), core-temp gain/offset, hypoxic-burden integral, fall physics stages, personal expected-HR; `CLINICAL_FLOORS` proven immutable |
+| B. Calibration module | 18 | ✅ PASS | quiet-reading gate keeps crises out of baselines; auto-fit percentile diff; guided oral-temperature → personal skin→core offset; pulse-ox offset; manual overrides tag their source; bad reference kind rejected |
+| C. Two-tier detection | 10 | ✅ PASS | σ-gate fires High Stress where the legacy score alone would not; fever via core-equivalent (skin below clinical rule); Low Oxygen on accumulated burden; personal HRV-drop → Fatigue; severe HRV crash routes to stress tier; fall/clinical rules unchanged; calm readings stay quiet |
+| D. HTTP API | 15 | ✅ PASS | `GET/PUT /api/calibration`, `POST /auto-fit`, `POST /reference` (400 on bad kind), auth required, caregiver (staff) permitted, live equation breakdown served |
+| E. Demo-trigger regression | 14 | ✅ PASS | stress/fall/fever/desat each create a NEW alert on demand; walk/normal accepted quietly |
+
+### Frontend — jsdom DOM smoke (`calib_domtest.cjs`, 17 checks)
+
+✅ Sign-in regression (wrong password → "Invalid email or password", never "session expired") →
+dashboard as Emily Carter → Management → **Calibration** tab renders (title, auto-fit button,
+baseline inputs with source badges, two-tier panels, live equation panel) → auto-fit re-renders →
+guided oral reference applies and appears in Reference history → σ-rule slider saves.
+
+### Bug fixed in this build
+
+| # | Bug | Fix |
+|---|-----|-----|
+| B2-1 | Demo/"quick emergency trigger" silently did nothing when pressed twice within 10 min (600 s duplicate-suppression cooldown applied to DEMO scenarios too) | `force_phase()` now clears the alert cooldown — drills and demo triggers always show their alert; organic duplicate suppression unchanged |
+
+**Verdict: 74/74 backend + 17/17 DOM — PASS (idempotent across repeated runs).**

@@ -1,8 +1,8 @@
 /**
  * NeuroLink Wear — login view.
  */
-import { api, auth } from '../api.js?v=20260926-7';
-import { $, toast } from '../ui.js?v=20260926-7';
+import { api, auth } from '../api.js?v=20260926-8';
+import { $, toast } from '../ui.js?v=20260926-8';
 
 export default {
   render() {
