@@ -66,7 +66,8 @@ function buildUrl(path, query) {
     });
   }
   // Proxy-proof auth: header AND query parameter carry the same token.
-  if (auth.token) qs.set('access_token', auth.token);
+  // Never attach the token to login attempts (a stale one must not matter).
+  if (auth.token && path !== '/auth/login') qs.set('access_token', auth.token);
   const s = qs.toString();
   return s ? `${url}?${s}` : url;
 }
@@ -74,7 +75,7 @@ function buildUrl(path, query) {
 async function rawFetch(path, { method = 'GET', body, query, authed = true } = {}) {
   const headers = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
-  if (authed && auth.token) headers.Authorization = `Bearer ${auth.token}`;
+  if (authed && auth.token && path !== '/auth/login') headers.Authorization = `Bearer ${auth.token}`;
   return fetch(buildUrl(path, query), {
     method,
     headers,
@@ -117,6 +118,13 @@ async function request(path, { method = 'GET', body, query } = {}) {
   }
 
   if (res.status === 401) {
+    // A 401 from the login endpoint means bad credentials — surface the real
+    // reason. It is NOT session expiry: never clear the session or log out
+    // just because a sign-in attempt failed.
+    if (path === '/auth/login') {
+      const data = await res.json().catch(() => ({}));
+      throw new ApiError(401, (data && data.detail) || 'Invalid email or password');
+    }
     await handle401(path);
     throw new ApiError(401, 'Session expired — please sign in again');
   }

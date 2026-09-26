@@ -1,8 +1,8 @@
 /**
  * NeuroLink Wear — login view.
  */
-import { api, auth } from '../api.js?v=20260926-6';
-import { $, toast } from '../ui.js?v=20260926-6';
+import { api, auth } from '../api.js?v=20260926-7';
+import { $, toast } from '../ui.js?v=20260926-7';
 
 export default {
   render() {
@@ -36,7 +36,11 @@ export default {
         toast('success', `Welcome, ${res.user.name.split(' ')[0]}`, 'Secure session started — it will persist for 30 days.');
         window.dispatchEvent(new CustomEvent('nlw:login'));
       } catch (err) {
-        errBox.textContent = err.message || 'Sign-in failed';
+        if (err && err.status === 0) {
+          errBox.textContent = 'Cannot reach the dashboard server — it may be restarting. Please wait a moment and try again.';
+        } else {
+          errBox.textContent = err.message || 'Sign-in failed';
+        }
         errBox.classList.remove('hidden');
       } finally {
         submit.classList.remove('loading');
