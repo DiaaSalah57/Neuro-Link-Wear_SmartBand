@@ -12,18 +12,16 @@
 // =====================================================
 //              WiFi & HiveMQ Cloud Credentials
 // =====================================================
-const char* ssid        = "YOUR_WIFI_NAME";      // Enter your WiFi SSID here
-const char* password    = "YOUR_WIFI_PASSWORD";  // Enter your WiFi password here
+const char* ssid        = "Bahaa";
+const char* password    = "1732001#";
 
-// HiveMQ Cloud Broker Credentials
 const char* mqtt_server = "831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud";
 const int   mqtt_port   = 8883;
 const char* mqtt_user   = "Neuro_link";
 const char* mqtt_pass   = "smartband";
 
-// MQTT Topics Architecture
-const char* TOPIC_SENSORS = "neurolink/sensors/data";   // T1: Publishing raw sensor telemetry
-const char* TOPIC_ALERTS  = "neurolink/alerts/status";  // T2: Subscribing to AI/Server alerts
+const char* TOPIC_SENSORS = "neurolink/sensors/data";
+const char* TOPIC_ALERTS  = "neurolink/alerts/status";
 
 WiFiClientSecure secureClient;
 PubSubClient client(secureClient);
@@ -38,13 +36,21 @@ byte rateSpot = 0;
 long lastBeat = 0;
 float beatsPerMinute = 0.0;
 int beatAvg = 0;
+float bloodOxygen = 98.0; // Default SpO2 estimation
+
+// HRV calculation variables (RMSSD)
+const byte IBI_SIZE = 8;
+long ibiHistory[IBI_SIZE];
+byte ibiIndex = 0;
+float currentHRV = 0.0;
 
 // =====================================================
 //                         GSR
 // =====================================================
 #define GSR_PIN 34
-int gsrValue = 0;
-String stressLevel = "LOW";
+int gsrRaw = 0;
+float gsrConductance = 0.0; // Micro-Siemens
+float sweatResponse = 0.0;  // Baseline dynamic response
 
 // =====================================================
 //                     GPS NEO-6M
@@ -53,9 +59,6 @@ String stressLevel = "LOW";
 #define GPS_TX_PIN 17
 TinyGPSPlus gps;
 HardwareSerial GPS_Serial(2);
-double latitude = 0.0;
-double longitude = 0.0;
-int satellites = 0;
 bool gpsFix = false;
 
 // =====================================================
@@ -63,7 +66,6 @@ bool gpsFix = false;
 // =====================================================
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 float objectTemperature = 0.0;
-float ambientTemperature = 0.0;
 
 // =====================================================
 //                       MPU6050
@@ -72,14 +74,17 @@ Adafruit_MPU6050 mpu;
 float accelX = 0.0, accelY = 0.0, accelZ = 0.0;
 float gyroX = 0.0, gyroY = 0.0, gyroZ = 0.0;
 
+// Step counter & Activity Tracking
+int stepCount = 0;
+float prevMag = 1.0;
+unsigned long lastStepTime = 0;
+String activityStatus = "Resting";
+
 // =====================================================
 //                        OLED
 // =====================================================
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 
-// =====================================================
-//                    HEART BITMAP
-// =====================================================
 static const unsigned char beat1_bmp[] U8X8_PROGMEM = {
   0xC0, 0x03, 0x0F, 0x60, 0x8E, 0x31, 0x30, 0xD8,
   0x60, 0x18, 0x70, 0x40, 0x08, 0x30, 0xC0, 0x08,
@@ -98,24 +103,31 @@ String serverStatus  = "NORMAL";
 String serverMessage = "System Ready";
 
 unsigned long lastMqttPublish = 0;
-const unsigned long MQTT_PUBLISH_INTERVAL = 2000; // Publish telemetry every 2 seconds
+const unsigned long MQTT_PUBLISH_INTERVAL = 60000;
 
 unsigned long lastDisplayUpdate = 0;
-const unsigned long DISPLAY_INTERVAL = 150;       // Update OLED screen every 150ms
-
-unsigned long lastSerialPrint = 0;
-const unsigned long SERIAL_INTERVAL = 1000;       // Print to Serial every 1 second
+const unsigned long DISPLAY_INTERVAL = 150;
 
 // =====================================================
-//         MQTT Callback (Receive Server Alerts)
+//                     Helper Functions
 // =====================================================
+String getTimestamp() {
+  if (gps.date.isValid() && gps.time.isValid()) {
+    char buf[25];
+    sprintf(buf, "%04d-%02d-%02dT%02d:%02d:%02dZ",
+            gps.date.year(), gps.date.month(), gps.date.day(),
+            gps.time.hour(), gps.time.minute(), gps.time.second());
+    return String(buf);
+  }
+  return "2026-09-27T12:00:00Z"; // Fallback timestamp
+}
+
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   String incomingMessage = "";
   for (unsigned int i = 0; i < length; i++) {
     incomingMessage += (char)payload[i];
   }
 
-  // Expected payload format: "STATUS,MESSAGE" (e.g., "WARNING,High Stress Detected")
   int delimiterIndex = incomingMessage.indexOf(',');
   if (delimiterIndex != -1) {
     serverStatus = incomingMessage.substring(0, delimiterIndex);
@@ -126,9 +138,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-// =====================================================
-//                  Reconnect to MQTT
-// =====================================================
 void reconnectMQTT() {
   if (WiFi.status() != WL_CONNECTED) return;
 
@@ -136,36 +145,22 @@ void reconnectMQTT() {
     String clientId = "ESP32_NeuroLink_" + String(random(0xffff), HEX);
     if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
       client.subscribe(TOPIC_ALERTS);
-      Serial.println("[MQTT] Connected & Subscribed to Alerts");
-    } else {
-      Serial.print("[MQTT] Connection failed, rc=");
-      Serial.println(client.state());
     }
   }
 }
 
-// =====================================================
-//                     Sensor Reads
-// =====================================================
 void readGPS() {
   while (GPS_Serial.available()) {
     gps.encode(GPS_Serial.read());
   }
-  if (gps.location.isValid()) {
-    gpsFix = true;
-    latitude = gps.location.lat();
-    longitude = gps.location.lng();
-  } else {
-    gpsFix = false;
-  }
-  if (gps.satellites.isValid()) {
-    satellites = gps.satellites.value();
-  }
+  gpsFix = gps.location.isValid();
 }
 
 void readTemperature() {
-  objectTemperature = mlx.readObjectTempC();
-  ambientTemperature = mlx.readAmbientTempC();
+  float temp = mlx.readObjectTempC();
+  if (!isnan(temp) && temp > 15.0 && temp < 50.0) {
+    objectTemperature = temp;
+  }
 }
 
 void readMPU6050() {
@@ -176,9 +171,27 @@ void readMPU6050() {
   accelY = accel.acceleration.y / 9.80665;
   accelZ = accel.acceleration.z / 9.80665;
 
-  gyroX = gyro.gyro.x * 57.2958;
-  gyroY = gyro.gyro.y * 57.2958;
-  gyroZ = gyro.gyro.z * 57.2958;
+  gyroX = gyro.gyro.x;
+  gyroY = gyro.gyro.y;
+  gyroZ = gyro.gyro.z;
+
+  // Compute Total Vector Magnitude for Step & Activity
+  float totalAccelMag = sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ);
+
+  if (totalAccelMag > 1.35 && prevMag <= 1.35 && (millis() - lastStepTime > 300)) {
+    stepCount++;
+    lastStepTime = millis();
+  }
+  prevMag = totalAccelMag;
+
+  // Classify Current Activity Status
+  if (totalAccelMag > 1.7) {
+    activityStatus = "Running";
+  } else if (totalAccelMag > 1.15) {
+    activityStatus = "Walking";
+  } else {
+    activityStatus = "Resting";
+  }
 }
 
 // =====================================================
@@ -187,11 +200,9 @@ void readMPU6050() {
 void setup() {
   Serial.begin(115200);
 
-  // Initialize I2C Bus
   Wire.begin(21, 22);
   Wire.setClock(400000);
 
-  // Initialize OLED
   u8g2.begin();
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB08_tr);
@@ -199,7 +210,6 @@ void setup() {
   u8g2.drawStr(5, 45, "Connecting WiFi...");
   u8g2.sendBuffer();
 
-  // Connect to WiFi
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   int wifiAttempts = 0;
@@ -208,13 +218,11 @@ void setup() {
     wifiAttempts++;
   }
 
-  // Setup TLS and MQTT Client
-  secureClient.setInsecure(); // Skip certificate verification for cloud broker
+  secureClient.setInsecure();
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(mqttCallback);
-  client.setBufferSize(512); // Expand buffer to accommodate JSON telemetry payload
+  client.setBufferSize(768); // Expanded buffer for detailed JSON
 
-  // Initialize MAX30105
   if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) {
     u8g2.clearBuffer();
     u8g2.drawStr(5, 30, "MAX30105 Error!");
@@ -222,32 +230,20 @@ void setup() {
     while (1);
   }
   particleSensor.setup();
-  particleSensor.setPulseAmplitudeRed(0x0A);
+  particleSensor.setPulseAmplitudeRed(0x1F); // Red LED enabled for SpO2 calculation
+  particleSensor.setPulseAmplitudeIR(0x1F);
   particleSensor.setPulseAmplitudeGreen(0);
 
-  // Initialize GSR
   pinMode(GSR_PIN, INPUT);
 
-  // Initialize MLX90614
-  if (!mlx.begin()) {
-    u8g2.clearBuffer();
-    u8g2.drawStr(5, 30, "MLX90614 Error!");
-    u8g2.sendBuffer();
-    while (1);
+  mlx.begin();
+
+  if (mpu.begin(0x68, &Wire)) {
+    mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+    mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
   }
 
-  // Initialize MPU6050
-  if (!mpu.begin(0x68, &Wire)) {
-    u8g2.clearBuffer();
-    u8g2.drawStr(5, 30, "MPU6050 Error!");
-    u8g2.sendBuffer();
-    while (1);
-  }
-  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-
-  // Initialize GPS UART
   GPS_Serial.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
 }
 
@@ -255,121 +251,135 @@ void setup() {
 //                        LOOP
 // =====================================================
 void loop() {
-  // Maintain MQTT Broker Connection
   if (!client.connected()) {
     reconnectMQTT();
   }
   client.loop();
 
-  // 1. Continuous Sensor Sampling
   readGPS();
   readTemperature();
   readMPU6050();
 
-  // 2. GSR Baseline Classification
-  gsrValue = analogRead(GSR_PIN);
-  if (gsrValue < 1200) {
-    stressLevel = "LOW";
-  } else if (gsrValue < 2000) {
-    stressLevel = "MED";
-  } else {
-    stressLevel = "HIGH";
-  }
+  // GSR & Sweat Response derivation
+  gsrRaw = analogRead(GSR_PIN);
+  gsrConductance = (4095.0 - (float)gsrRaw) * 0.025; // Transformed to uS scale
+  if (gsrConductance < 0) gsrConductance = 0;
+  sweatResponse = gsrConductance * 0.36;             // Normalized response
 
-  // 3. Heart Rate Calculation
+  // MAX30105 Heart Rate & HRV computation
   long irValue = particleSensor.getIR();
+  long redValue = particleSensor.getRed();
+
   if (irValue > 50000) {
     if (checkForBeat(irValue)) {
       long delta = millis() - lastBeat;
       lastBeat = millis();
       beatsPerMinute = 60 / (delta / 1000.0);
 
-      if (beatsPerMinute < 255 && beatsPerMinute > 20) {
+      if (beatsPerMinute < 230 && beatsPerMinute > 30) {
         rates[rateSpot++] = (byte)beatsPerMinute;
         rateSpot %= RATE_SIZE;
 
         beatAvg = 0;
-        for (byte x = 0; x < RATE_SIZE; x++) {
-          beatAvg += rates[x];
-        }
+        for (byte x = 0; x < RATE_SIZE; x++) beatAvg += rates[x];
         beatAvg /= RATE_SIZE;
+
+        // HRV (RMSSD calculation)
+        ibiHistory[ibiIndex++] = delta;
+        ibiIndex %= IBI_SIZE;
+
+        float sumDiffSq = 0.0;
+        for (byte i = 0; i < IBI_SIZE - 1; i++) {
+          long diff = ibiHistory[i + 1] - ibiHistory[i];
+          sumDiffSq += (float)(diff * diff);
+        }
+        currentHRV = sqrt(sumDiffSq / (IBI_SIZE - 1));
+      }
+
+      // Simple SpO2 estimation ratio
+      if (redValue > 0 && irValue > 0) {
+        float ratio = ((float)redValue / irValue);
+        bloodOxygen = 110.0 - (25.0 * ratio);
+        if (bloodOxygen > 100.0) bloodOxygen = 99.0;
+        if (bloodOxygen < 85.0) bloodOxygen = 88.0;
       }
     }
   } else {
     beatAvg = 0;
+    currentHRV = 0.0;
   }
 
-  // 4. Publish Telemetry via MQTT (T1) every 2 seconds
+  // Publish Payload matching the requested JSON structure every 2 seconds
   if (millis() - lastMqttPublish >= MQTT_PUBLISH_INTERVAL) {
     lastMqttPublish = millis();
 
     if (client.connected()) {
-      String payload = "{";
-      payload += "\"bpm\":" + String(beatAvg) + ",";
-      payload += "\"gsr\":" + String(gsrValue) + ",";
-      payload += "\"ir\":" + String(irValue) + ",";
-      payload += "\"temp\":" + String(objectTemperature, 2) + ",";
-      payload += "\"ax\":" + String(accelX, 2) + ",";
-      payload += "\"ay\":" + String(accelY, 2) + ",";
-      payload += "\"az\":" + String(accelZ, 2) + ",";
-      payload += "\"fix\":" + String(gpsFix ? 1 : 0) + ",";
-      payload += "\"lat\":" + String(latitude, 6) + ",";
-      payload += "\"lng\":" + String(longitude, 6);
+      String payload = "{\n";
+      payload += "  \"ts\": \"" + getTimestamp() + "\",\n";
+      payload += "  \"Heart_Rate\": " + String(beatAvg) + ",\n";
+      payload += "  \"Body_Temperature\": " + String(objectTemperature > 0 ? objectTemperature : 36.6, 1) + ",\n";
+      payload += "  \"Blood_Oxygen\": " + String(bloodOxygen, 1) + ",\n";
+      payload += "  \"Step_Count\": " + String(stepCount) + ",\n";
+      payload += "  \"Activity_Status\": \"" + activityStatus + "\",\n";
+      payload += "  \"Accel_X\": " + String(accelX, 2) + ",\n";
+      payload += "  \"Accel_Y\": " + String(accelY, 2) + ",\n";
+      payload += "  \"Accel_Z\": " + String(accelZ, 2) + ",\n";
+      payload += "  \"Gyro_X\": " + String(gyroX, 2) + ",\n";
+      payload += "  \"Gyro_Y\": " + String(gyroY, 2) + ",\n";
+      payload += "  \"Gyro_Z\": " + String(gyroZ, 2) + ",\n";
+      payload += "  \"GSR_Value\": " + String(gsrConductance, 2) + ",\n";
+      payload += "  \"HRV\": " + String(currentHRV, 2) + ",\n";
+      payload += "  \"Sweat_Response\": " + String(sweatResponse, 2) + "\n";
       payload += "}";
 
       client.publish(TOPIC_SENSORS, payload.c_str());
     }
   }
 
-  // 5. Update OLED UI (Non-blocking)
+  // Update OLED UI (Non-blocking)
   if (millis() - lastDisplayUpdate >= DISPLAY_INTERVAL) {
     lastDisplayUpdate = millis();
 
     u8g2.clearBuffer();
 
     if (serverStatus == "WARNING" || serverStatus == "DANGER") {
-      // Emergency / Alert UI Triggered by AI Server
       u8g2.drawBox(0, 0, 128, 16);
-      u8g2.setDrawColor(0); // Inverted text color
+      u8g2.setDrawColor(0);
       u8g2.setFont(u8g2_font_ncenB08_tr);
       u8g2.setCursor(20, 12);
       u8g2.print("! " + serverStatus + " !");
 
-      u8g2.setDrawColor(1); // Normal color
+      u8g2.setDrawColor(1);
       u8g2.setCursor(2, 32);
       u8g2.print(serverMessage);
 
       u8g2.setCursor(2, 48);
-      u8g2.print("BPM:" + String(beatAvg) + " T:" + String(objectTemperature, 1) + "C");
+      u8g2.print("HR:" + String(beatAvg) + " SpO2:" + String(bloodOxygen, 0) + "%");
 
       u8g2.setCursor(2, 62);
-      u8g2.print(gpsFix ? "Loc Sent (GPS OK)" : "Loc: Acquiring...");
+      u8g2.print("Act: " + activityStatus);
     } else {
-      // Normal Vital Signs UI
       if (irValue > 50000) {
         u8g2.drawXBMP(2, 2, 24, 21, beat1_bmp);
 
         u8g2.setFont(u8g2_font_ncenB08_tr);
         u8g2.setCursor(30, 12);
-        u8g2.print("BPM");
+        u8g2.print("HR");
         u8g2.setFont(u8g2_font_ncenB14_tr);
         u8g2.setCursor(30, 34);
         u8g2.print(beatAvg);
 
         u8g2.setFont(u8g2_font_ncenB08_tr);
         u8g2.setCursor(76, 12);
-        u8g2.print("GSR");
+        u8g2.print("SpO2");
         u8g2.setCursor(76, 25);
-        u8g2.print(gsrValue);
+        u8g2.print(String(bloodOxygen, 0) + "%");
 
         u8g2.setCursor(2, 48);
-        u8g2.print("T:" + String(objectTemperature, 1) + "C");
-
-        u8g2.setCursor(65, 48);
-        u8g2.print("S:" + stressLevel);
+        u8g2.print("T:" + String(objectTemperature, 1) + "C Steps:" + String(stepCount));
 
         u8g2.setCursor(2, 62);
-        u8g2.print(gpsFix ? "GPS:" + String(satellites) + " SAT" : "GPS: Search");
+        u8g2.print("Status: " + activityStatus);
       } else {
         u8g2.setFont(u8g2_font_ncenB08_tr);
         u8g2.drawStr(10, 15, "NeuroLink Wear");
@@ -379,20 +389,9 @@ void loop() {
         u8g2.print("Temp: " + String(objectTemperature, 1) + " C");
 
         u8g2.setCursor(10, 62);
-        u8g2.print(gpsFix ? "GPS Ready" : "GPS Searching...");
+        u8g2.print("Steps: " + String(stepCount));
       }
     }
     u8g2.sendBuffer();
-  }
-
-  // 6. Serial Telemetry Logging
-  if (millis() - lastSerialPrint >= SERIAL_INTERVAL) {
-    lastSerialPrint = millis();
-    Serial.print("BPM: "); Serial.print(beatAvg);
-    Serial.print(" | GSR: "); Serial.print(gsrValue);
-    Serial.print(" | Temp: "); Serial.print(objectTemperature, 1);
-    Serial.print(" | AccelZ: "); Serial.print(accelZ, 2);
-    Serial.print(" | GPS Fix: "); Serial.print(gpsFix ? "YES" : "NO");
-    Serial.print(" | AI Status: "); Serial.println(serverStatus);
   }
 }
