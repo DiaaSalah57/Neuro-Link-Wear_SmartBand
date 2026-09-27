@@ -155,6 +155,9 @@ class IngestIn(BaseModel):
     Gyro_Y: float = 0.0
     Gyro_Z: float = 0.0
     activity: str = "Resting"
+    Activity_Status: str | None = None
+    Sweat_Response: float | None = None
+    ts: str | None = None
     lat: float | None = None
     lng: float | None = None
 

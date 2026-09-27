@@ -213,8 +213,15 @@ def start_bridge(cfg: dict, on_payload, loop: asyncio.AbstractEventLoop | None =
     client.reconnect_delay_set(min_delay=2, max_delay=60)
 
     def _on_connect(*args):
-        _bridge.update(status="connected", detail=f"subscribed to {topic}")
-        client.subscribe(topic, qos=1)
+        # The paired-device topic AND the firmware's fixed telemetry topic
+        # (Smart_band/smart_band.ino publishes to neurolink/sensors/data).
+        topics: list[str] = []
+        for t in (topic, "neurolink/sensors/data"):
+            if t and t not in topics:
+                topics.append(t)
+        _bridge.update(status="connected", detail=f"subscribed to {', '.join(topics)}")
+        for t in topics:
+            client.subscribe(t, qos=1)
 
     def _on_disconnect(*args):
         if _bridge["status"] != "stopped":
@@ -252,3 +259,32 @@ def stop_bridge() -> None:
             client.loop_stop()
         except Exception:
             pass
+
+
+# ───────────────────────── alert → band dispatch ─────────────────────────────
+# The firmware (Smart_band/smart_band.ino, mqttCallback) subscribes to
+# neurolink/alerts/status and parses PLAIN TEXT "status,message" — it splits on
+# the FIRST comma only: serverStatus = before, serverMessage = after.
+
+ALERT_TOPIC = "neurolink/alerts/status"
+
+
+def band_alert_message(alert: dict) -> str:
+    """Format one alert as the firmware's mqttCallback expects: ``status,message``."""
+    status = str(alert.get("severity") or "info").upper().replace(",", " ")
+    title = str(alert.get("title") or alert.get("type") or "Alert")
+    rec = str(alert.get("recommendation") or "")
+    message = f"{title} — {rec}" if rec else title
+    return f"{status},{message[:160]}"
+
+
+def publish_alert(alert: dict) -> bool:
+    """Best-effort publish of one alert to the band's display. Never raises."""
+    client = _bridge.get("client")
+    if client is None or _bridge.get("status") != "connected":
+        return False
+    try:
+        client.publish(ALERT_TOPIC, band_alert_message(alert), qos=1)
+        return True
+    except Exception:
+        return False

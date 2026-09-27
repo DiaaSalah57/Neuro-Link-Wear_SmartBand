@@ -10,6 +10,8 @@ detected over REST.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from .calibration import observe as cal_observe
 from .db import get_db, one
 from .detection import evaluate, stress_score
@@ -17,26 +19,87 @@ from .insights import now_iso
 from .simulator import get_simulator
 
 
+# ── ESP32 wire-format mapping (Smart_band/smart_band.ino — source of truth) ──
+# The firmware publishes on ``neurolink/sensors/data`` every 60 s:
+#   {ts, Heart_Rate, Body_Temperature, Blood_Oxygen, Step_Count, Activity_Status,
+#    Accel_X/Y/Z [g], Gyro_X/Y/Z [rad/s], GSR_Value [µS], HRV [RMSSD ms],
+#    Sweat_Response}
+# Mapping rules (the firmware is never modified):
+#   * 0-sentinels — Heart_Rate / HRV report 0.0 until the sensors have signal;
+#     0 is never treated as a real vital (it would fire Bradycardia / HRV-drop
+#     on the very first reading). Population-prior defaults stand in instead.
+#   * GSR — the firmware's µS value is used as-is when it sits in the calibrated
+#     band (0.10..19.93 — models/pipeline_stats.json, detection.GSR_MIN/MAX).
+#     Its ADC transform (4095-adc)*0.025 can theoretically overshoot that band
+#     (up to ~102 µS on wet electrodes); overshoot is mapped back into the band
+#     with GSR_FIRMWARE_SCALE so the normalised stress index can't peg at 1.0.
+#   * ts — GPS-derived UTC timestamp. Without a GPS fix the firmware falls back
+#     to a FIXED date, so device timestamps outside a ±TS_WINDOW_H window of
+#     "now" are replaced with server time (keeps history ordering honest).
+#   * Accel [g] and Gyro [rad/s] match the fall thresholds (2.8 g impact,
+#     2.4 rad/s rotation) — no conversion.
+#   * lat/lng pass through when present (band GPS added later), else the
+#     simulated home-base coordinates are used.
+
+GSR_FIRMWARE_SCALE = 0.1   # overshoot guard: firmware ADC µS -> calibrated µS band
+GSR_BAND_MAX = 20.0        # calibrated band ceiling (dataset max 19.93)
+TS_WINDOW_H = 36.0         # accept device timestamps only within this window
+
+
+def _first(d: dict, *keys):
+    for k in keys:
+        if k in d and d[k] is not None:
+            return d[k]
+    return None
+
+
+def _num(v, default: float, positive: bool = False) -> float:
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return default
+    if positive and f <= 0:
+        return default
+    return f
+
+
+def _device_ts(d: dict) -> str:
+    raw = _first(d, "ts", "timestamp")
+    if raw is not None:
+        try:
+            t = datetime.fromisoformat(str(raw).strip().replace("Z", "+00:00"))
+            if t.tzinfo is None:
+                t = t.replace(tzinfo=timezone.utc)
+            if abs((datetime.now(timezone.utc) - t).total_seconds()) <= TS_WINDOW_H * 3600:
+                return t.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        except Exception:
+            pass
+    return now_iso()
+
+
 def build_reading(d: dict) -> dict:
     """Normalise an ESP32 / internal payload into the canonical reading shape."""
     sim = get_simulator()
     reading = {
-        "ts": now_iso(),
-        "heart_rate": d.get("Heart_Rate") or d.get("heart_rate") or 72,
-        "temperature": d.get("Body_Temperature") or d.get("temperature") or 36.6,
-        "spo2": d.get("Blood_Oxygen") or d.get("spo2") or 97,
-        "gsr": d.get("GSR_Value") or d.get("gsr") or 0.4,
-        "hrv": d.get("HRV") or d.get("hrv") or 50,
-        "steps": int(d.get("Step_Count") or d.get("steps") or 0),
-        "activity": d.get("activity") or "Resting",
-        "accel_x": float(d.get("Accel_X") or 0.0),
-        "accel_y": float(d.get("Accel_Y") or 0.0),
-        "accel_z": float(d.get("Accel_Z") or 1.0),
-        "gyro_x": float(d.get("Gyro_X") or 0.0),
-        "gyro_y": float(d.get("Gyro_Y") or 0.0),
-        "gyro_z": float(d.get("Gyro_Z") or 0.0),
-        "battery": d.get("battery") or 87,
+        "ts": _device_ts(d),
+        "heart_rate": _num(_first(d, "Heart_Rate", "heart_rate"), 72.0, positive=True),
+        "temperature": _num(_first(d, "Body_Temperature", "temperature"), 36.6, positive=True),
+        "spo2": _num(_first(d, "Blood_Oxygen", "spo2"), 97.0, positive=True),
+        "gsr": _num(_first(d, "GSR_Value", "gsr"), 0.4),
+        "hrv": _num(_first(d, "HRV", "hrv"), 50.0, positive=True),
+        "steps": int(_num(_first(d, "Step_Count", "steps"), 0.0)),
+        "activity": _first(d, "Activity_Status", "activity") or "Resting",
+        "accel_x": _num(_first(d, "Accel_X", "accel_x"), 0.0),
+        "accel_y": _num(_first(d, "Accel_Y", "accel_y"), 0.0),
+        "accel_z": _num(_first(d, "Accel_Z", "accel_z"), 1.0),
+        "gyro_x": _num(_first(d, "Gyro_X", "gyro_x"), 0.0),
+        "gyro_y": _num(_first(d, "Gyro_Y", "gyro_y"), 0.0),
+        "gyro_z": _num(_first(d, "Gyro_Z", "gyro_z"), 0.0),
+        "sweat_response": _num(_first(d, "Sweat_Response", "sweat_response", "sweat"), 0.0),
+        "battery": _num(_first(d, "battery", "Battery"), 87.0),
     }
+    if reading["gsr"] > GSR_BAND_MAX:          # firmware ADC overshoot -> calibrated band
+        reading["gsr"] = round(reading["gsr"] * GSR_FIRMWARE_SCALE, 3)
     reading["accel_mag"] = round(
         (reading["accel_x"] ** 2 + reading["accel_y"] ** 2 + reading["accel_z"] ** 2) ** 0.5, 3)
     reading["gyro_mag"] = round(

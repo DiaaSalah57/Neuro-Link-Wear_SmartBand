@@ -298,6 +298,11 @@ class WearableSimulator:
             )
             alert_id = cur.lastrowid
             row = one(db.execute("SELECT * FROM alerts WHERE id=?", (alert_id,)))
+        try:  # push a status,message summary to the band's OLED (best-effort)
+            from .mqtt import publish_alert
+            publish_alert({**payload, "recommendation": recommendation})
+        except Exception:
+            pass
         return row
 
     def check_inactivity(self) -> dict | None:

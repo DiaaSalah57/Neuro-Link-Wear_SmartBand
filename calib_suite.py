@@ -326,6 +326,78 @@ for kind, expect in triggers:
     else:
         check(f"trigger {kind} quiet", True)
 
+# ── F. ESP32 wire-format adapter (Smart_band/smart_band.ino) ─────────────────
+# Byte-exact sample of what mqttCallback-side firmware publishes on
+# neurolink/sensors/data — the exact string concatenation from the .ino.
+from datetime import datetime, timezone  # noqa: E402
+from app.ingest import build_reading     # noqa: E402
+from app.detection import evaluate       # noqa: E402
+from app.mqtt import band_alert_message  # noqa: E402
+
+FW_PAYLOAD = (
+    '{\n'
+    '  "ts": "2026-09-27T12:00:00Z",\n'
+    '  "Heart_Rate": 78,\n'
+    '  "Body_Temperature": 36.6,\n'
+    '  "Blood_Oxygen": 97.0,\n'
+    '  "Step_Count": 359,\n'
+    '  "Activity_Status": "Running",\n'
+    '  "Accel_X": -1.41,\n'
+    '  "Accel_Y": 0.75,\n'
+    '  "Accel_Z": 0.42,\n'
+    '  "Gyro_X": 0.16,\n'
+    '  "Gyro_Y": -0.11,\n'
+    '  "Gyro_Z": -0.07,\n'
+    '  "GSR_Value": 18.78,\n'
+    '  "HRV": 20.47,\n'
+    '  "Sweat_Response": 6.75\n'
+    '}'
+)
+fw = json.loads(FW_PAYLOAD)
+r = build_reading(fw)
+check("FW payload parsed", isinstance(r, dict))
+check("FW Heart_Rate → heart_rate", r["heart_rate"] == 78, f"got {r['heart_rate']}")
+check("FW Body_Temperature → temperature", r["temperature"] == 36.6, f"got {r['temperature']}")
+check("FW Blood_Oxygen → spo2", r["spo2"] == 97.0, f"got {r['spo2']}")
+check("FW Step_Count → steps", r["steps"] == 359, f"got {r['steps']}")
+check("FW Activity_Status → activity", r["activity"] == "Running", f"got {r['activity']}")
+check("FW GSR_Value in-band passes through", r["gsr"] == 18.78, f"got {r['gsr']}")
+check("FW HRV mapped", r["hrv"] == 20.47, f"got {r['hrv']}")
+check("FW Sweat_Response mapped", r["sweat_response"] == 6.75, f"got {r.get('sweat_response')}")
+check("FW accel [g] mag", abs(r["accel_mag"] - 1.651) < 0.01, f"got {r['accel_mag']}")
+
+r0 = build_reading({"Heart_Rate": 0, "HRV": 0.0, "Activity_Status": "Resting"})
+check("FW HR 0-sentinel → default 72", r0["heart_rate"] == 72, f"got {r0['heart_rate']}")
+check("FW HRV 0-sentinel → default 50", r0["hrv"] == 50, f"got {r0['hrv']}")
+ev0 = evaluate(r0, {}, {"name": "T", "age": 78})
+types0 = {e["type"] for e in ev0}
+check("0-sentinels cause no Bradycardia/Fatigue", "Bradycardia" not in types0 and "Fatigue" not in types0,
+      f"events={sorted(types0)}")
+
+now_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+check("FW in-window ts accepted", build_reading({"ts": now_ts})["ts"] == now_ts)
+check("FW fixed-fallback ts rejected → server time",
+      build_reading({"ts": "2020-01-01T00:00:00Z"})["ts"] != "2020-01-01T00:00:00Z")
+
+r_over = build_reading({"GSR_Value": 87.5})
+check("GSR ADC overshoot mapped into band", r_over["gsr"] == 8.75, f"got {r_over['gsr']}")
+
+r_fall = build_reading({"Accel_X": 3.05, "Accel_Y": 0.55, "Accel_Z": 0.2, "Gyro_X": 2.5})
+ev_fall = evaluate(r_fall, {}, {"name": "T", "age": 78})
+check("FW IMU g-units trip Fall Detection",
+      any(e["type"] == "Fall Detected" for e in ev_fall), f"events={[e['type'] for e in ev_fall]}")
+
+bm = band_alert_message({"severity": "critical", "title": "Fall detected — impact signature",
+                         "recommendation": "Check on the wearer now."})
+check("band alert format status,message", bm.startswith("CRITICAL,") and "Fall detected" in bm.split(",", 1)[1],
+      f"got {bm!r}")
+
+st, body = http("POST", "/api/telemetry/ingest?device_key=neurolink-demo-key", fw, tok)
+rr = body.get("reading", {}) if isinstance(body, dict) else {}
+check("HTTP ingest accepts FW payload", st == 200 and body.get("ok"), f"resp={st}")
+check("HTTP ingest maps Activity_Status", rr.get("activity") == "Running", f"got {rr.get('activity')}")
+check("HTTP ingest maps Sweat_Response", rr.get("sweat_response") == 6.75, f"got {rr.get('sweat_response')}")
+
 print(f"\n{'='*60}\n  TOTAL: {PASS} passed, {len(FAILED)} failed")
 if FAILED:
     for f_ in FAILED:
