@@ -2,21 +2,21 @@
  * NeuroLink Wear — application shell: routing, theme, sticky device banner,
  * global SOS flow and live WebSocket fan-out.
  */
-import { api, auth } from './api.js?v=20260927-3';
-import { store } from './store.js?v=20260927-3';
-import { connectWS, disconnectWS, onWS, wsState } from './ws.js?v=20260927-3';
+import { api, auth } from './api.js?v=20260927-4';
+import { store } from './store.js?v=20260927-4';
+import { connectWS, disconnectWS, onWS, wsState } from './ws.js?v=20260927-4';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, fmtRelative, fmtDateTime,
   confirmDialog,
-} from './ui.js?v=20260927-3';
+} from './ui.js?v=20260927-4';
 
-import loginView from './views/login.js?v=20260927-3';
-import overviewView from './views/overview.js?v=20260927-3';
-import alertsView from './views/alerts.js?v=20260927-3';
-import safetyView from './views/safety.js?v=20260927-3';
-import trendsView from './views/trends.js?v=20260927-3';
-import managementView from './views/management.js?v=20260927-3';
-import settingsView from './views/settings.js?v=20260927-3';
+import loginView from './views/login.js?v=20260927-4';
+import overviewView from './views/overview.js?v=20260927-4';
+import alertsView from './views/alerts.js?v=20260927-4';
+import safetyView from './views/safety.js?v=20260927-4';
+import trendsView from './views/trends.js?v=20260927-4';
+import managementView from './views/management.js?v=20260927-4';
+import settingsView from './views/settings.js?v=20260927-4';
 
 const routes = {
   overview: overviewView,

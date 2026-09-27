@@ -2,14 +2,14 @@
  * NeuroLink Wear — Live Overview: realtime vitals, IMU motion, live feed,
  * device health and AI insight cards.
  */
-import { api } from '../api.js?v=20260927-3';
-import { store } from '../store.js?v=20260927-3';
-import { onWS } from '../ws.js?v=20260927-3';
+import { api } from '../api.js?v=20260927-4';
+import { store } from '../store.js?v=20260927-4';
+import { onWS } from '../ws.js?v=20260927-4';
 import {
   $, $$, esc, icons, toast, fmtTime, fmtRelative, fmtDateTime, fmtNum,
   skeletonCards, emptyState, typeIcon,
-} from '../ui.js?v=20260927-3';
-import { sparkline } from '../charts.js?v=20260927-3';
+} from '../ui.js?v=20260927-4';
+import { sparkline } from '../charts.js?v=20260927-4';
 
 let unsubWS = null;
 let unsubStore = null;

@@ -1,5 +1,6 @@
 /**
- * NeuroLink Wear — map helper (Leaflet + OSM with graceful SVG fallback).
+ * NeuroLink Wear — map helper (Leaflet + Google Maps tiles, OSM/CARTO fallback,
+ * graceful SVG fallback when map scripts are unavailable).
  */
 let leafletPromise = null;
 
@@ -70,7 +71,7 @@ export async function createMap(containerId, opts = {}) {
   el.innerHTML = '';
   const map = L.map(containerId, { zoomControl: true, attributionControl: true }).setView([lat, lng], zoom);
 
-  // Tile resilience: OSM primary, CARTO secondary, offline notice after that.
+  // Google Maps tiles primary (Map / Satellite), then OSM → CARTO → notice.
   // Markers + GPS coordinates keep working in every case.
   const tileNotice = (msg) => {
     if (el.querySelector('.tile-notice')) return;
@@ -79,25 +80,62 @@ export async function createMap(containerId, opts = {}) {
     n2.textContent = msg;
     el.appendChild(n2);
   };
-  const watchTiles = (layer, onFail) => {
-    let errors = 0;
-    layer.on('tileerror', () => { if (++errors >= 3) onFail(); });
-    return layer;
+  const GOOGLE_URLS = {
+    m: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',   // roadmap
+    h: 'https://mt{s}.google.com/vt/lyrs=h&x={x}&y={y}&z={z}',   // satellite + labels
   };
+  const googleLayer = (kind) => L.tileLayer(GOOGLE_URLS[kind], {
+    maxZoom: 20,
+    subdomains: ['0', '1', '2', '3'],
+    attribution: '&copy; Google',
+  });
   const cartoLayer = () => L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
   });
-  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  const osmLayer = () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors',
   });
-  watchTiles(osm, () => {
-    map.removeLayer(osm);
-    watchTiles(cartoLayer().addTo(map), () => {
-      tileNotice('Map tiles unavailable — GPS coordinates remain live and accurate');
-    });
-  }).addTo(map);
+
+  let activeTileLayer = null;
+  let fallbackStage = 0;   // 0 = google, 1 = osm, 2 = carto, 3 = offline
+  let tileErrors = 0;
+
+  const onTileFail = () => {
+    if (fallbackStage >= 3) return;
+    tileErrors = 0;
+    if (activeTileLayer) map.removeLayer(activeTileLayer);
+    fallbackStage += 1;
+    if (fallbackStage === 1) activeTileLayer = osmLayer();
+    else if (fallbackStage === 2) activeTileLayer = cartoLayer();
+    else { activeTileLayer = null; tileNotice('Map tiles unavailable — GPS coordinates remain live and accurate'); return; }
+    watch(activeTileLayer);
+    activeTileLayer.addTo(map);
+  };
+  const watch = (layer) => layer.on('tileerror', () => { if (++tileErrors >= 3) onTileFail(); });
+
+  const setTileKind = (kind) => {
+    if (fallbackStage > 0) return;          // past google — keep the fallback chain
+    tileErrors = 0;
+    if (activeTileLayer) map.removeLayer(activeTileLayer);
+    activeTileLayer = googleLayer(kind);
+    watch(activeTileLayer);
+    activeTileLayer.addTo(map);
+  };
+  setTileKind('m');
+
+  // Minimal Map / Satellite switch (Google layers)
+  const ctl = document.createElement('div');
+  ctl.className = 'map-type-ctl';
+  ctl.innerHTML = '<button type="button" class="active" data-t="m">Map</button><button type="button" data-t="h">Satellite</button>';
+  el.appendChild(ctl);
+  ctl.querySelectorAll('button').forEach((b) => {
+    b.onclick = () => {
+      ctl.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
+      setTileKind(b.dataset.t);
+    };
+  });
 
   const liveIcon = L.divIcon({
     className: '',
