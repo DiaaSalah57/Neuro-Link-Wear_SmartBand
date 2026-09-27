@@ -86,8 +86,8 @@ class WearableSimulator:
             pass
 
         # GPS around home
-        self.lat = 42.3467
-        self.lng = -71.1206
+        self.lat = 30.028018
+        self.lng = 31.201973
 
     # ── scenario helpers ──────────────────────────────────────────────────
     def _phase(self) -> tuple[str, float]:
@@ -233,8 +233,8 @@ class WearableSimulator:
 
         # GPS slow drift, tighter when resting
         spread = 0.00022 if self.activity in ("Walking", "Running", "Exercising") else 0.00005
-        self.lat += self.rng.gauss(0, spread) + (42.3467 - self.lat) * 0.05
-        self.lng += self.rng.gauss(0, spread) + (-71.1206 - self.lng) * 0.05
+        self.lat += self.rng.gauss(0, spread) + (30.028018 - self.lat) * 0.05
+        self.lng += self.rng.gauss(0, spread) + (31.201973 - self.lng) * 0.05
         reading["lat"] = round(self.lat, 6)
         reading["lng"] = round(self.lng, 6)
         return reading

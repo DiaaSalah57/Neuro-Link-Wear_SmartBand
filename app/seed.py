@@ -26,8 +26,8 @@ def iso(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-HOME_LAT, HOME_LNG = 42.3467, -71.1206  # Rosewood Senior Living, Brookline, MA
-FALL_LAT, FALL_LNG = 42.34512, -71.11821
+HOME_LAT, HOME_LNG = 30.028018, 31.201973  # Creativa Innovation Hub - Giza, 26H2+6Q5, Ad Doqi, Dokki
+FALL_LAT, FALL_LNG = 30.026438, 31.204363
 
 
 def seed_all() -> None:
@@ -70,7 +70,7 @@ def _seed_patient(db) -> None:
            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             "Margaret Thompson", 78, "Female", "#2563eb",
-            "Rosewood Senior Living, 12 Rosewood Lane, Brookline, MA 02445",
+            "Creativa Innovation Hub - Giza, 26H2+6Q5, Ad Doqi, Dokki, Giza Governorate 3750010",
             "Suite 214",
             "Hypertension, mild COPD, osteoarthritis",
             "Lisinopril 10mg (morning), Salbutamol inhaler (as needed), Calcium + Vitamin D",
@@ -116,10 +116,10 @@ def _seed_contacts(db) -> None:
     t = iso(now())
     contacts = [
         ("James Thompson", "Son (primary contact)", "+1 (617) 555-0177", "james.thompson@example.com", 1, 1, "Lives 10 min away — can reach the residence quickly."),
-        ("Dr. Sarah Mitchell", "Primary care physician", "+1 (617) 555-0119", "s.mitchell@brooklineclinic.example", 2, 1, "Brookline Family Clinic — Mon–Fri 8:00–17:00."),
+        ("Dr. Sarah Mitchell", "Primary care physician", "+1 (617) 555-0119", "s.mitchell@dokkiclinic.example", 2, 1, "Dokki Family Clinic — Mon–Fri 8:00–17:00."),
         ("Emily Carter", "Professional caregiver", "+1 (617) 555-0142", "emily.carter@example.com", 2, 1, "On-site weekdays 09:00–18:00."),
         ("Linda Thompson", "Daughter", "+1 (415) 555-0166", "linda.t@example.com", 3, 1, "Out of state — backup contact, prefers SMS."),
-        ("Brookline Emergency Services", "Emergency medical services", "911", "", 1, 1, "Call for any fall with head impact or unresponsiveness."),
+        ("Giza Emergency Services", "Emergency medical services", "911", "", 1, 1, "Call for any fall with head impact or unresponsiveness."),
     ]
     for c in contacts:
         db.execute(
@@ -396,7 +396,7 @@ def _seed_alerts(db) -> None:
     # Dispatch log for the fall
     t = iso(fall_ts + timedelta(minutes=1))
     for contact_id, channel, status, msg in [
-        (1, "call", "delivered", "EMERGENCY: Fall detected for Margaret Thompson at 18:42. Location: Rosewood Senior Living, Suite 214. Please respond."),
+        (1, "call", "delivered", "EMERGENCY: Fall detected for Margaret Thompson at 18:42. Location: Creativa Innovation Hub - Giza, Ad Doqi, Dokki. Please respond."),
         (3, "sms", "delivered", "NeuroLink Wear alert: Margaret's band detected a fall at 18:42. You are listed as an on-site caregiver. Respond to Suite 214."),
         (2, "sms", "delivered", "FYI: Fall detected for patient Margaret Thompson at 18:42. Family has been contacted. Incident report to follow."),
     ]:

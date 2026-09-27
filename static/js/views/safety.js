@@ -2,14 +2,14 @@
  * NeuroLink Wear — Safety & Emergency: live GPS map, incident timeline with
  * inactivity alerts, and one-click emergency contact dispatch.
  */
-import { api } from '../api.js?v=20260927-4';
-import { store } from '../store.js?v=20260927-4';
-import { onWS } from '../ws.js?v=20260927-4';
+import { api } from '../api.js?v=20260927-5';
+import { store } from '../store.js?v=20260927-5';
+import { onWS } from '../ws.js?v=20260927-5';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, fmtTime,
   emptyState, skeletonCards, typeIcon, confirmDialog,
-} from '../ui.js?v=20260927-4';
-import { createMap } from '../map.js?v=20260927-4';
+} from '../ui.js?v=20260927-5';
+import { createMap } from '../map.js?v=20260927-5';
 
 let unsubWS = null;
 let mapCtl = null;
@@ -112,8 +112,8 @@ async function refreshMap() {
   try {
     latest = await api.locationLatest();
   } catch { /* */ }
-  const lat = (latest && latest.lat) || 42.3467;
-  const lng = (latest && latest.lng) || -71.1206;
+  const lat = (latest && latest.lat) || 30.028018;
+  const lng = (latest && latest.lng) || 31.201973;
 
   const alertRes = await api.alerts({ hours: 24 * 7, limit: 30 }).catch(() => ({ data: [] }));
   const markers = alertRes.data
@@ -145,7 +145,7 @@ async function refreshMap() {
 function openDispatchModal(alert) {
   api.contacts().then((contacts) => {
     const dispatchable = contacts.filter((c) => c.can_dispatch);
-    import('../ui.js?v=20260927-4').then(({ openModal, closeModal }) => {
+    import('../ui.js?v=20260927-5').then(({ openModal, closeModal }) => {
       openModal({
         title: 'Dispatch emergency contacts',
         wide: true,
@@ -274,7 +274,7 @@ export default {
                   <span class="lg-item"><span class="legend-dot" style="background:#241483"></span> Live position</span>
                   <span class="lg-item"><span class="legend-dot" style="background:#170c5e"></span> Incident location</span>
                 </div>
-                <small class="muted">Rosewood Senior Living · 12 Rosewood Lane, Brookline, MA</small>
+                <small class="muted">Creativa Innovation Hub - Giza · 26H2+6Q5, Ad Doqi, Dokki, Giza</small>
               </div>
             </div>
           </div>

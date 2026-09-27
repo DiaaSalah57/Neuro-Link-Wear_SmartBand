@@ -50,7 +50,7 @@ export async function createMap(containerId, opts = {}) {
   const el = document.getElementById(containerId);
   if (!el) return { update() {}, destroy() {} };
   const {
-    lat = 42.3467, lng = -71.1206, zoom = 15,
+    lat = 30.028018, lng = 31.201973, zoom = 15,
     markers = [], liveLabel = 'Margaret Thompson · live position',
   } = opts;
 
