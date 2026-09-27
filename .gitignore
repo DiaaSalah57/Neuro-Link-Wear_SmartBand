@@ -1,0 +1,7 @@
+# Device credentials (copy Smart_band/secrets_template.h → Smart_band/secrets.h)
+Smart_band/secrets.h
+
+# Python
+__pycache__/
+*.pyc
+.venv/
