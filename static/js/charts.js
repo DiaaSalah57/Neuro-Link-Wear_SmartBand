@@ -2,7 +2,7 @@
  * NeuroLink Wear — dependency-free interactive SVG charts:
  * multi-series line/area with hover crosshair + tooltip, sparklines, bars.
  */
-import { esc, fmtTime, fmtDateTime } from './ui.js?v=20260926-8';
+import { esc, fmtTime, fmtDateTime } from './ui.js?v=20260927-1';
 
 function niceTicks(min, max, count = 4) {
   if (min === max) { min -= 1; max += 1; }
@@ -84,8 +84,8 @@ export function lineChart(container, series, opts = {}) {
 
   const refG = refLines.map(r => `
     <line x1="${padL}" x2="${W - padR}" y1="${Y(r.v)}" y2="${Y(r.v)}"
-          stroke="${r.color || '#dc2626'}" stroke-width="1.4" stroke-dasharray="6 5" opacity=".75"/>
-    ${r.label ? `<text x="${W - padR - 2}" y="${Y(r.v) - 5}" text-anchor="end" fill="${r.color || '#dc2626'}" font-weight="600">${esc(r.label)}</text>` : ''}`).join('');
+          stroke="${r.color || '#b01e28'}" stroke-width="1.4" stroke-dasharray="6 5" opacity=".75"/>
+    ${r.label ? `<text x="${W - padR - 2}" y="${Y(r.v) - 5}" text-anchor="end" fill="${r.color || '#b01e28'}" font-weight="600">${esc(r.label)}</text>` : ''}`).join('');
 
   const legendHtml = showLegend && series.length > 1 ? `
     <div class="chart-legend">
@@ -147,7 +147,7 @@ export function lineChart(container, series, opts = {}) {
 }
 
 /** Tiny inline sparkline used in vital cards. */
-export function sparkline(values, { color = '#2563eb', height = 46, width = 220, fill = true } = {}) {
+export function sparkline(values, { color = '#b01e28', height = 46, width = 220, fill = true } = {}) {
   if (!values.length) return '';
   const min = Math.min(...values), max = Math.max(...values);
   const rng = max - min || 1;

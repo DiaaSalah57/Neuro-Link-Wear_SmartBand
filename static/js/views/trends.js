@@ -3,18 +3,18 @@
  * interactive time-series charts (HRV, temperature, stress, HR) with
  * date-range filters and daily activity summaries.
  */
-import { api } from '../api.js?v=20260926-8';
+import { api } from '../api.js?v=20260927-1';
 import {
   $, $$, esc, icons, fmtNum, fmtDate, skeletonChart, skeletonCards,
   emptyState,
-} from '../ui.js?v=20260926-8';
-import { lineChart, barChart, donutChart } from '../charts.js?v=20260926-8';
+} from '../ui.js?v=20260927-1';
+import { lineChart, barChart, donutChart } from '../charts.js?v=20260927-1';
 
 let rangeHours = 24;
 
 const PALETTE = {
-  hrv: '#0d9488', temp: '#d97706', stress: '#7c3aed', hr: '#e11d48',
-  spo2: '#0891b2', steps: '#2563eb', active: '#059669',
+  hrv: '#4e7f73', temp: '#c97a14', stress: '#8e4a6b', hr: '#b01e28',
+  spo2: '#4e6e8e', steps: '#5b7fa6', active: '#4e8a5f',
 };
 
 function statTile({ label, value, unit = '', delta = null, deltaLabel = 'vs prev. 24h', tone = 'neutral' }) {
@@ -66,7 +66,7 @@ async function renderCharts() {
   ], {
     height: 250, yDigits: 1, timeFormat: timeFmt, showLegend: true,
     refLines: thresholds
-      ? [{ v: thresholds.temp_high, label: `fever > ${thresholds.temp_high}°C`, color: '#dc2626' }]
+      ? [{ v: thresholds.temp_high, label: `fever > ${thresholds.temp_high}°C`, color: '#b01e28' }]
       : [],
   });
 
@@ -75,7 +75,7 @@ async function renderCharts() {
     { name: 'Heart rate (bpm ÷ 120)', color: PALETTE.hr, points: data.map((d) => ({ t: d.ts, v: d.heart_rate / 120 })) },
   ], {
     height: 230, yDigits: 2, timeFormat: timeFmt,
-    refLines: thresholds ? [{ v: thresholds.stress_high, label: `high stress > ${thresholds.stress_high}`, color: '#7c3aed' }] : [],
+    refLines: thresholds ? [{ v: thresholds.stress_high, label: `high stress > ${thresholds.stress_high}`, color: '#8e4a6b' }] : [],
   });
 }
 
@@ -98,10 +98,10 @@ async function renderActivity() {
 
   if (donut) {
     const act = res.today_activity || [];
-    const colors = { Sleeping: '#7c3aed', Resting: '#94a3b8', Walking: '#059669', Running: '#e11d48', Exercising: '#d97706' };
+    const colors = { Sleeping: '#8e4a6b', Resting: '#9a8a8e', Walking: '#4e8a5f', Running: '#b01e28', Exercising: '#c97a14' };
     const total = act.reduce((a, x) => a + x.n, 0);
     if (total) {
-      donutChart(donut, act.map((x) => ({ name: x.activity, value: x.n, color: colors[x.activity] || '#0e7490' })),
+      donutChart(donut, act.map((x) => ({ name: x.activity, value: x.n, color: colors[x.activity] || '#b01e28' })),
         { centerLabel: `${total} pts` });
     } else {
       donut.innerHTML = `<div class="muted" style="font-size:12.5px">Activity breakdown appears once live readings accumulate.</div>`;

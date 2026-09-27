@@ -2,14 +2,14 @@
  * NeuroLink Wear — Safety & Emergency: live GPS map, incident timeline with
  * inactivity alerts, and one-click emergency contact dispatch.
  */
-import { api } from '../api.js?v=20260926-8';
-import { store } from '../store.js?v=20260926-8';
-import { onWS } from '../ws.js?v=20260926-8';
+import { api } from '../api.js?v=20260927-1';
+import { store } from '../store.js?v=20260927-1';
+import { onWS } from '../ws.js?v=20260927-1';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, fmtTime,
   emptyState, skeletonCards, typeIcon, confirmDialog,
-} from '../ui.js?v=20260926-8';
-import { createMap } from '../map.js?v=20260926-8';
+} from '../ui.js?v=20260927-1';
+import { createMap } from '../map.js?v=20260927-1';
 
 let unsubWS = null;
 let mapCtl = null;
@@ -145,7 +145,7 @@ async function refreshMap() {
 function openDispatchModal(alert) {
   api.contacts().then((contacts) => {
     const dispatchable = contacts.filter((c) => c.can_dispatch);
-    import('../ui.js?v=20260926-8').then(({ openModal, closeModal }) => {
+    import('../ui.js?v=20260927-1').then(({ openModal, closeModal }) => {
       openModal({
         title: 'Dispatch emergency contacts',
         wide: true,
@@ -271,8 +271,8 @@ export default {
               <div class="map-wrap tall" id="safety-map-wrap"></div>
               <div class="row" style="margin-top:10px;justify-content:space-between">
                 <div class="row" style="gap:14px">
-                  <span class="lg-item"><span class="legend-dot" style="background:#0e7490"></span> Live position</span>
-                  <span class="lg-item"><span class="legend-dot" style="background:#dc2626"></span> Incident location</span>
+                  <span class="lg-item"><span class="legend-dot" style="background:#b01e28"></span> Live position</span>
+                  <span class="lg-item"><span class="legend-dot" style="background:#221015"></span> Incident location</span>
                 </div>
                 <small class="muted">Rosewood Senior Living · 12 Rosewood Lane, Brookline, MA</small>
               </div>
