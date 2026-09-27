@@ -53,6 +53,24 @@ HardwareSerial gpsSerial(2);
 // TinyGPS++ parser
 TinyGPSPlus gps;
 
+// ---------------------------------------------------
+// Extra NMEA fields TinyGPS++ does not expose itself.
+// These tell you what is happening WHILE searching,
+// before there is any fix at all.
+// ---------------------------------------------------
+
+// $GPGSV field 3 = total satellites in view
+TinyGPSCustom satsInView(gps, "GPGSV", 3);
+
+// $GPGSV field 7 = SNR (C/N0) of the first satellite listed
+TinyGPSCustom snrFirstSat(gps, "GPGSV", 7);
+
+// $GPGSA field 2 = fix mode: 1 = none, 2 = 2D, 3 = 3D
+TinyGPSCustom fixMode(gps, "GPGSA", 2);
+
+// $GPGGA field 6 = fix quality: 0 = invalid, 1 = GPS fix
+TinyGPSCustom fixQuality(gps, "GPGGA", 6);
+
 // Timers
 unsigned long lastPrint  = 0;
 unsigned long lastCharIn = 0;
@@ -147,8 +165,40 @@ void printGpsReport() {
 
   Serial.println("------------- GPS STATUS -------------");
 
+  // ---------------- Search progress -----------------
+  // Shown even when there is no fix, so you can tell
+  // "acquiring" apart from "antenna dead".
+
+  Serial.print("Searching   : ");
+  Serial.print(millis() / 1000);
+  Serial.println(" s since boot");
+
+  Serial.print("Sats in view: ");
+  Serial.println(satsInView.isUpdated() || satsInView.age() < 5000
+                 ? satsInView.value() : "--");
+
+  Serial.print("Best SNR    : ");
+  Serial.print(snrFirstSat.age() < 5000 ? snrFirstSat.value() : "--");
+  Serial.println("  (30+ = strong, under 20 = too weak to lock)");
+
+  Serial.print("Fix mode    : ");
+  if (fixMode.age() < 5000 && fixMode.value()[0]) {
+    switch (fixMode.value()[0]) {
+      case '1': Serial.println("1 = NO FIX (searching)"); break;
+      case '2': Serial.println("2 = 2D fix");             break;
+      case '3': Serial.println("3 = 3D fix");             break;
+      default:  Serial.println(fixMode.value());          break;
+    }
+  } else {
+    Serial.println("--");
+  }
+
+  Serial.print("Fix quality : ");
+  Serial.println(fixQuality.age() < 5000 && fixQuality.value()[0]
+                 ? fixQuality.value() : "--");
+
   // ------------------- Satellites -------------------
-  Serial.print("Satellites : ");
+  Serial.print("Sats used   : ");
   if (gps.satellites.isValid()) {
     Serial.println(gps.satellites.value());
   } else {
