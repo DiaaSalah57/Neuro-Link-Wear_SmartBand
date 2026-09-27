@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Data — the demo database is re-seeded on first boot
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Node / tooling
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

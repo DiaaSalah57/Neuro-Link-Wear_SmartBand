@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NeuroLink Wear — real-time IoT health & safety monitoring dashboard for elderly care.">
+  <title>NeuroLink Wear — Health & Safety Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23241483'/%3E%3Cpath d='M4 16h6l2.5-6 4 12 3-6h8' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css?v=20260927-5">
+  <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+</head>
+<body>
+  <!-- ═══════════ Login ═══════════ -->
+  <div id="login-screen" class="login-screen hidden">
+    <div class="login-hero">
+      <div class="login-hero-inner">
+        <div class="brand-logo lg">
+          <svg viewBox="0 0 32 32" width="34" height="34" aria-hidden="true"><rect width="32" height="32" rx="9" fill="currentColor" opacity=".16"/><path d="M4 16h6l2.5-6 4 12 3-6h8" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>NeuroLink <b>Wear</b></span>
+        </div>
+        <h1>Health &amp; safety monitoring <span class="accent">that never sleeps.</span></h1>
+        <p>Real-time biometrics, AI-driven anomaly detection and one-press emergency escalation — built for elderly individuals, their families and caregivers.</p>
+        <div class="hero-features">
+          <div class="hero-feature"><span class="hf-icon">💓</span><div><strong>Live vitals</strong><small>HR · SpO₂ · temperature · GSR stress</small></div></div>
+          <div class="hero-feature"><span class="hf-icon">🤖</span><div><strong>AI insights</strong><small>Plain-language explanations &amp; advice</small></div></div>
+          <div class="hero-feature"><span class="hf-icon">🛡️</span><div><strong>Instant escalation</strong><small>GPS tracking &amp; one-click dispatch</small></div></div>
+        </div>
+        <div class="hero-wave" aria-hidden="true">
+          <svg viewBox="0 0 600 90" preserveAspectRatio="none">
+            <path class="wave-path" d="M0,45 L60,45 L75,20 L95,70 L115,35 L130,45 L200,45 L215,10 L235,80 L255,30 L270,45 L340,45 L355,22 L375,68 L395,38 L410,45 L480,45 L495,16 L515,74 L535,32 L550,45 L600,45"
+                  fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="login-panel">
+      <div class="login-card">
+        <h2>Welcome back</h2>
+        <p class="muted">Sign in to the NeuroLink Wear dashboard</p>
+        <form id="login-form" autocomplete="on" onsubmit="return false" action="#">
+          <label class="field">
+            <span>Email</span>
+            <input type="email" id="login-email" required placeholder="you@neurolink.health" autocomplete="username">
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password">
+          </label>
+          <div id="login-error" class="form-error hidden"></div>
+          <button type="submit" class="btn primary block lg-btn" id="login-submit">Sign in</button>
+        </form>
+        <div class="demo-accounts">
+          <p class="muted">Demo accounts — one click to fill</p>
+          <button class="demo-chip" data-email="caregiver@neurolink.health" data-pw="caregiver123">
+            <span class="avatar sm" style="background:#241483">EC</span>
+            <span><strong>Caregiver</strong><small>caregiver@neurolink.health</small></span>
+          </button>
+          <button class="demo-chip" data-email="admin@neurolink.health" data-pw="admin123">
+            <span class="avatar sm" style="background:#5b4bd6">AO</span>
+            <span><strong>Admin</strong><small>admin@neurolink.health</small></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ App shell ═══════════ -->
+  <div id="app-shell" class="app-shell hidden">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-head">
+        <div class="brand-logo">
+          <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><rect width="32" height="32" rx="9" fill="currentColor" opacity=".16"/><path d="M4 16h6l2.5-6 4 12 3-6h8" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>NeuroLink <b>Wear</b></span>
+        </div>
+        <button id="sidebar-close" class="icon-btn sidebar-close" aria-label="Close menu">✕</button>
+      </div>
+
+      <div class="patient-chip" id="patient-chip">
+        <span class="avatar" id="patient-avatar">MT</span>
+        <div class="patient-chip-info">
+          <strong id="patient-chip-name">Margaret Thompson</strong>
+          <small id="patient-chip-sub">78 · Suite 214 · NL-200</small>
+        </div>
+      </div>
+
+      <nav class="side-nav" id="side-nav" aria-label="Main navigation">
+        <a href="#/overview" data-route="overview" class="side-link">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>
+          <span>Live Overview</span>
+        </a>
+        <a href="#/alerts" data-route="alerts" class="side-link">
+          <svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-6 6v3.6l-1.6 2.9a1 1 0 0 0 .9 1.5h13.4a1 1 0 0 0 .9-1.5L18 12.6V9a6 6 0 0 0-6-6Z"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0"/></svg>
+          <span>AI Alerts</span>
+          <span class="nav-badge hidden" id="nav-alert-count">0</span>
+        </a>
+        <a href="#/safety" data-route="safety" class="side-link">
+          <svg viewBox="0 0 24 24"><path d="M12 2.7 4.8 5.7v5.1c0 4.6 3 8.9 7.2 10.2 4.2-1.3 7.2-5.6 7.2-10.2V5.7L12 2.7Z"/><path d="M9.2 11.9 11.3 14l3.7-3.9"/></svg>
+          <span>Safety &amp; SOS</span>
+        </a>
+        <a href="#/trends" data-route="trends" class="side-link">
+          <svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 14 3.5-4 3 2.5L18 7"/><circle cx="18" cy="7" r="1.4"/></svg>
+          <span>Trends</span>
+        </a>
+        <a href="#/management" data-route="management" class="side-link">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.9-4.7 5.5-4.7s4.9 1.7 5.5 4.7"/><circle cx="17.2" cy="9.2" r="2.5"/><path d="M15.6 14.7c2.4.1 4.4 1.6 4.9 4.3"/></svg>
+          <span>Care Team</span>
+        </a>
+        <div class="side-section-label">System</div>
+        <a href="#/settings" data-route="settings" class="side-link">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.06-.4.1-.8.1-1.2Z"/></svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="user-card" id="user-card">
+          <span class="avatar sm" id="user-avatar">EC</span>
+          <div class="user-card-info">
+            <strong id="user-name">—</strong>
+            <small id="user-role">—</small>
+          </div>
+          <button class="icon-btn" id="logout-btn" title="Sign out" aria-label="Sign out">
+            <svg viewBox="0 0 24 24"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/><path d="m15 8 4 4-4 4"/><path d="M19 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+    <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
+
+    <div class="main-col">
+      <!-- Sticky device status banner -->
+      <header class="status-banner" id="status-banner">
+        <button class="icon-btn menu-btn" id="menu-btn" aria-label="Open menu">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <div class="device-status" id="device-status">
+          <span class="status-dot online" id="status-dot"></span>
+          <strong id="status-label">Connecting…</strong>
+          <span class="status-sep">·</span>
+          <span class="muted" id="status-device-name">NeuroLink Band NL-200</span>
+          <span class="status-sep">·</span>
+          <span class="battery-chip" id="status-battery" title="Band battery">
+            <svg viewBox="0 0 24 24" width="16" height="16"><rect x="2" y="7" width="17" height="10" rx="2.5"/><path d="M21 10.5v3" stroke-width="2"/><rect class="battery-fill" x="4" y="9" width="11" height="6" rx="1"/></svg>
+            <span id="status-battery-pct">—</span>
+          </span>
+          <span class="status-sep">·</span>
+          <span class="muted mono" id="status-sync">last sync —</span>
+        </div>
+        <div class="banner-actions">
+          <button class="btn ghost sm" id="theme-toggle" title="Toggle dark / light mode" aria-label="Toggle theme">
+            <svg id="theme-icon-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></svg>
+            <svg id="theme-icon-sun" class="hidden" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></svg>
+          </button>
+          <button class="btn danger sm" id="sos-btn" title="Trigger emergency SOS">
+            <svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 2.7 4.8 5.7v5.1c0 4.6 3 8.9 7.2 10.2 4.2-1.3 7.2-5.6 7.2-10.2V5.7L12 2.7Z"/><path d="M12 8.5v4.2"/><circle cx="12" cy="15.6" r=".9" fill="currentColor" stroke="none"/></svg>
+            <span class="sos-label">SOS</span>
+          </button>
+        </div>
+      </header>
+
+      <main id="view-root" class="view-root" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <!-- overlays -->
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+  <div id="modal-root" class="modal-root hidden"></div>
+
+  <script type="module" src="/static/js/app.js?v=20260927-5"></script>
+</body>
+</html>

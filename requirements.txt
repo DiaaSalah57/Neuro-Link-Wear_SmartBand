@@ -1,9 +1,14 @@
-fastapi
-uvicorn[standard]
-paho-mqtt
-joblib
-numpy
-pandas
-scikit-learn
-tensorflow
-requests
+# NeuroLink Wear — full-stack dashboard (server.py)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+
+# ── Optional: original MQTT bridge (main.py) ─────────────────────────────────
+paho-mqtt>=1.6
+
+# ── Optional: offline ML pipeline (pipeline.py — needs TensorFlow) ───────────
+# joblib
+# numpy
+# pandas
+# scikit-learn
+# tensorflow
+# requests
