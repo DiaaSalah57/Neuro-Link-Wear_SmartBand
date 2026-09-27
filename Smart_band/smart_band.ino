@@ -1,15 +1,14 @@
-#include 
-#include 
-#include 
-#include 
-#include 
+#include <Wire.h>
+#include<WiFi.h>
+#include<WiFiClientSecure.h>
+#include<PubSubClient.h>
+#include <U8g2lib.h>
 #include "MAX30105.h"
 #include "heartRate.h"
-#include 
-#include 
-#include 
-#include 
-
+#include <TinyGPSPlus.h>
+#include <Adafruit_MLX90614.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
 // =====================================================
 //              WiFi & HiveMQ Cloud Credentials
 // =====================================================
