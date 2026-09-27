@@ -63,22 +63,22 @@ export async function createMap(containerId, opts = {}) {
   const liveIcon = L.divIcon({
     className: '',
     html: `<div style="position:relative;width:26px;height:26px">
-        <span style="position:absolute;inset:0;border-radius:50%;background:rgba(176,30,40,.30);animation:ping 1.8s ease-out infinite"></span>
-        <span style="position:absolute;inset:6px;border-radius:50%;background:#b01e28;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)"></span>
+        <span style="position:absolute;inset:0;border-radius:50%;background:rgba(36,20,131,.30);animation:ping 1.8s ease-out infinite"></span>
+        <span style="position:absolute;inset:6px;border-radius:50%;background:#241483;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)"></span>
       </div>`,
     iconSize: [26, 26],
     iconAnchor: [13, 13],
   });
   const fallIcon = L.divIcon({
     className: '',
-    html: `<div style="width:24px;height:24px;border-radius:50%;background:#221015;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);display:grid;place-items:center;color:#fff;font-size:12px">⚠</div>`,
+    html: `<div style="width:24px;height:24px;border-radius:50%;background:#170c5e;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);display:grid;place-items:center;color:#fff;font-size:12px">⚠</div>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
   });
 
   const liveMarker = L.marker([lat, lng], { icon: liveIcon }).addTo(map).bindPopup(liveLabel);
   L.circle([lat, lng], {
-    radius: 45, color: '#b01e28', fillColor: '#b01e28', fillOpacity: 0.12, weight: 1.5,
+    radius: 45, color: '#241483', fillColor: '#241483', fillOpacity: 0.12, weight: 1.5,
   }).addTo(map);
 
   const bounds = [[lat, lng]];

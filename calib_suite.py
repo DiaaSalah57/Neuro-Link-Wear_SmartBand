@@ -317,7 +317,7 @@ for kind, expect in triggers:
     before = alert_ids_types()
     st, body = http("POST", f"/api/demo/trigger?kind={kind}", {}, tok)
     check(f"trigger {kind} accepted", st == 200 and body.get("ok"), f"resp={body}")
-    time.sleep(2.5)          # alert is created on the next simulator tick
+    time.sleep(4.5)          # alert is created on the next simulator tick (allow lag under load)
     after = alert_ids_types()
     new_types = {t for i, t in after.items() if i not in before}   # diff by NEW ids
     if expect:

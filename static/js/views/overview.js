@@ -2,14 +2,14 @@
  * NeuroLink Wear — Live Overview: realtime vitals, IMU motion, live feed,
  * device health and AI insight cards.
  */
-import { api } from '../api.js?v=20260927-1';
-import { store } from '../store.js?v=20260927-1';
-import { onWS } from '../ws.js?v=20260927-1';
+import { api } from '../api.js?v=20260927-2';
+import { store } from '../store.js?v=20260927-2';
+import { onWS } from '../ws.js?v=20260927-2';
 import {
   $, $$, esc, icons, toast, fmtTime, fmtRelative, fmtDateTime, fmtNum,
   skeletonCards, emptyState, typeIcon,
-} from '../ui.js?v=20260927-1';
-import { sparkline } from '../charts.js?v=20260927-1';
+} from '../ui.js?v=20260927-2';
+import { sparkline } from '../charts.js?v=20260927-2';
 
 let unsubWS = null;
 let unsubStore = null;
@@ -17,10 +17,10 @@ let feedItems = [];
 let historyLoaded = false;
 
 const VITALS = [
-  { key: 'heart_rate', label: 'Heart Rate', unit: 'bpm', icon: icons.heart, color: '#b01e28', soft: 'rgba(176,30,40,.09)', min: 52, max: 112, digits: 0, hiBad: 112, loBad: 52 },
-  { key: 'spo2', label: 'Blood Oxygen', unit: '%', icon: icons.lungs, color: '#4e6e8e', soft: 'rgba(78,110,142,.12)', min: 92, max: 100, digits: 0, hiBad: 100, loBad: 92 },
-  { key: 'temperature', label: 'Skin Temperature', unit: '°C', icon: icons.thermo, color: '#c97a14', soft: 'rgba(201,122,20,.12)', min: 35.5, max: 37.8, digits: 1, hiBad: 37.8, loBad: 35.5 },
-  { key: 'stress_score', label: 'Stress Index (GSR)', unit: '', icon: icons.wave, color: '#8e4a6b', soft: 'rgba(142,74,107,.12)', min: 0, max: 1, digits: 2, hiBad: 0.6, loBad: -1 },
+  { key: 'heart_rate', label: 'Heart Rate', unit: 'bpm', icon: icons.heart, color: '#241483', soft: 'rgba(36,20,131,.09)', min: 52, max: 112, digits: 0, hiBad: 112, loBad: 52 },
+  { key: 'spo2', label: 'Blood Oxygen', unit: '%', icon: icons.lungs, color: '#5b4bd6', soft: 'rgba(91,75,214,.11)', min: 92, max: 100, digits: 0, hiBad: 100, loBad: 92 },
+  { key: 'temperature', label: 'Skin Temperature', unit: '°C', icon: icons.thermo, color: '#8f82ee', soft: 'rgba(143,130,238,.13)', min: 35.5, max: 37.8, digits: 1, hiBad: 37.8, loBad: 35.5 },
+  { key: 'stress_score', label: 'Stress Index (GSR)', unit: '', icon: icons.wave, color: '#170c5e', soft: 'rgba(23,12,94,.09)', min: 0, max: 1, digits: 2, hiBad: 0.6, loBad: -1 },
 ];
 
 function statusFor(v, cfg) {
