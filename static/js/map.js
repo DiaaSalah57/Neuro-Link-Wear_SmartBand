@@ -3,17 +3,31 @@
  */
 let leafletPromise = null;
 
+function loadScript(src, timeout = 6000) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`script failed: ${src}`));
+    document.head.appendChild(s);
+    setTimeout(() => reject(new Error(`script timeout: ${src}`)), timeout);
+  });
+}
+
 function loadLeaflet() {
   if (window.L) return Promise.resolve(window.L);
   if (leafletPromise) return leafletPromise;
-  leafletPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    s.onload = () => (window.L ? resolve(window.L) : reject(new Error('Leaflet missing')));
-    s.onerror = () => reject(new Error('Leaflet CDN unavailable'));
-    document.head.appendChild(s);
-    setTimeout(() => reject(new Error('Leaflet load timeout')), 3000);
-  });
+  // Self-hosted first (works offline / behind restrictive networks),
+  // CDN only as a last resort.
+  leafletPromise = (async () => {
+    try {
+      await loadScript('/static/vendor/leaflet/leaflet.js');
+    } catch {
+      await loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
+    }
+    if (!window.L) throw new Error('Leaflet missing');
+    return window.L;
+  })();
   return leafletPromise;
 }
 
@@ -55,9 +69,34 @@ export async function createMap(containerId, opts = {}) {
 
   el.innerHTML = '';
   const map = L.map(containerId, { zoomControl: true, attributionControl: true }).setView([lat, lng], zoom);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+  // Tile resilience: OSM primary, CARTO secondary, offline notice after that.
+  // Markers + GPS coordinates keep working in every case.
+  const tileNotice = (msg) => {
+    if (el.querySelector('.tile-notice')) return;
+    const n2 = document.createElement('div');
+    n2.className = 'tile-notice';
+    n2.textContent = msg;
+    el.appendChild(n2);
+  };
+  const watchTiles = (layer, onFail) => {
+    let errors = 0;
+    layer.on('tileerror', () => { if (++errors >= 3) onFail(); });
+    return layer;
+  };
+  const cartoLayer = () => L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  });
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors',
+  });
+  watchTiles(osm, () => {
+    map.removeLayer(osm);
+    watchTiles(cartoLayer().addTo(map), () => {
+      tileNotice('Map tiles unavailable — GPS coordinates remain live and accurate');
+    });
   }).addTo(map);
 
   const liveIcon = L.divIcon({
@@ -81,9 +120,16 @@ export async function createMap(containerId, opts = {}) {
     radius: 45, color: '#241483', fillColor: '#241483', fillOpacity: 0.12, weight: 1.5,
   }).addTo(map);
 
+  const alertIcon = L.divIcon({
+    className: '',
+    html: `<div style="width:22px;height:22px;border-radius:50%;background:#3d3566;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  });
+
   const bounds = [[lat, lng]];
   markers.forEach((m) => {
-    const mk = L.marker([m.lat, m.lng], { icon: m.kind === 'fall' || m.kind === 'critical' ? fallIcon : undefined })
+    const mk = L.marker([m.lat, m.lng], { icon: m.kind === 'fall' || m.kind === 'critical' ? fallIcon : alertIcon })
       .addTo(map)
       .bindPopup(`<b>${m.label}</b><br><small>${m.ts || ''}</small>`);
     if (m.focus) mk.openPopup();
