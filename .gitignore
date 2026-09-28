@@ -5,3 +5,6 @@ Smart_band/secrets.h
 __pycache__/
 *.pyc
 .venv/
+
+# Pitch deck build outputs (regenerate with pitch_deck/build_deck.py)
+pitch_deck/preview/
