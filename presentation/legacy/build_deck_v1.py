@@ -1,3 +1,5 @@
+# LEGACY — original 28-slide deck builder. Kept for reference only.
+# The current deck is built by presentation/build.py.
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
@@ -10,7 +12,9 @@ from pathlib import Path
 
 # NeuroLink Wear investor / technology pitch deck.
 # Built from native PowerPoint shapes and text for straightforward editing.
-OUT = Path(__file__).resolve().parents[1] / 'NeuroLink_Wear_Investor_Deck.pptx'
+# NOTE: v1 builder, superseded by presentation/build.py (39-slide deck).
+# Output redirected so this legacy script can never overwrite the current deck.
+OUT = Path(__file__).resolve().parents[2] / 'presentation' / 'legacy' / 'NeuroLink_Wear_Deck_v1.pptx'
 
 prs = Presentation()
 prs.slide_width = Inches(13.333)
