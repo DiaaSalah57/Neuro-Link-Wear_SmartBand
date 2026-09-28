@@ -113,6 +113,44 @@ The ESP32 firmware (`Smart_band/smart_band.ino`) publishes sensor JSON to MQTT t
 
 Management → Alert Thresholds controls every alert boundary: HR safe window, SpO₂ floor, fever ceiling/floor, stress-index ceiling, HRV fatigue floor, fall-impact acceleration (with enable switch) and inactivity timeout. Changes apply to the next reading (~2 s).
 
+## Investor & technical pitch deck
+
+`NeuroLink_Wear_Investor_Deck.pptx` — 39-slide editable deck (16:9, 13.333 × 7.5 in) that takes the
+project from problem to financial plan. It is designed with the **same palette as the dashboard**
+(`static/css/styles.css` tokens) and built entirely from **native PowerPoint shapes, text boxes and
+tables** — no flattened images — so every element stays editable.
+
+| # | Slides | Content |
+|---|---|---|
+| 01 | 1–3 | Cover, contents, executive summary |
+| 02 | 4–7 | Problem, market segments, why now |
+| 03 | 8–12 | Solution loop, dashboard views, hardware stack, architecture |
+| 04 | 13–19 | Equation engine, per-wearer calibration, condition catalogue, two-tier safety model, AI layer, QA evidence |
+| 05 | 20–23 | Target audience segments, personas, jobs-to-be-done, adoption journey |
+| 06 | 24–28 | Maturity horizons, future features (wearer / caregiver / platform) |
+| 07 | 29–33 | Business model, unit economics, go-to-market, pilot plan |
+| 08 | 34–39 | 5-year plan, P&L and break-even, the $1.5M ask, risks, close |
+
+**Editing**
+
+* Open the `.pptx` in PowerPoint / Google Slides / Keynote — all text, colours and shapes are live.
+* Rebuild or restyle from source: `python3 presentation/build.py` (design tokens live at the top of
+  `presentation/kit.py`; content is split per section in `presentation/sec_*.py`).
+* Speaker notes are attached to every slide.
+* Placeholders to replace before sending: the **contact block** on the closing slide and the
+  illustrative financial assumptions (all flagged on-slide as planning scenarios).
+
+**Quality tooling** (used to build this deck, reusable for future edits)
+
+```bash
+python3 presentation/qa_deck.py        # off-canvas + text-collision + empty-band checks
+python3 presentation/preview.py NeuroLink_Wear_Investor_Deck.pptx /tmp/deck-pngs
+```
+
+`presentation/NeuroLink_Wear_Deck_Preview.pdf` is an auto-generated raster preview for quick
+review only (layout-accurate; fonts substituted, text not selectable) — the `.pptx` is the
+deliverable.
+
 ## License & attribution
 
 Part of the **NeuroLink Wear** project — smart-band health monitoring for elderly care.
