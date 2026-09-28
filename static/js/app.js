@@ -187,18 +187,22 @@ async function boot() {
       if (msg.data.device) updateBanner(msg.data.device);
     } else if (msg.type === 'hello' && msg.data && msg.data.device) {
       updateBanner(msg.data.device);
-    } else if (msg.type === 'connection') {
+        } else if (msg.type === 'connection') {
+      // This frame is the UI's OWN WebSocket state — never the band's.
+      // Device online/offline comes from device data on telemetry/hello frames.
       const dot = $('#status-dot');
       if (dot) {
         if (msg.data.connected) {
-          dot.className = 'status-dot online';
-          $('#status-label').textContent = 'Device Online';
-          $('#status-sync').textContent = 'stream live';
+          dot.className = 'status-dot connecting';
+          $('#status-label').textContent = 'Syncing…';
+          api.latest().then((t) => t && t.device && updateBanner(t.device)).catch(() => {});
         } else {
           dot.className = 'status-dot connecting';
           $('#status-label').textContent = 'Reconnecting…';
         }
       }
+    } else if (msg.type === 'device_status' && msg.data) {
+      updateBanner(msg.data);
     } else if (msg.type === 'alert' && msg.data) {
       store.set('activeAlerts', (store.activeAlerts || 0) + 1);
       const badge = $('#nav-alert-count');
