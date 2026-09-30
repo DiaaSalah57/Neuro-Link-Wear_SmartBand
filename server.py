@@ -2,8 +2,8 @@
 """
 NeuroLink Wear — Health & Safety Monitoring Dashboard.
 
-Run:
-    python server.py            # http://localhost:8000
+Run:http://localhost:8000
+    python server.py            # 
     python server.py --port 8080
 
 The database is created and seeded with demo data automatically on first boot.
