@@ -136,7 +136,7 @@ async function refreshMap() {
     lat: focus?.lat || lat, lng: focus?.lng || lng,
     zoom: focus ? 16 : 15,
     markers,
-    liveLabel: 'Margaret Thompson · live band position',
+    liveLabel: 'Abdelrahman · live band position',
   });
   const pill = $('#gps-pill');
   if (pill) pill.innerHTML = `${icons.pin} ${lat.toFixed(5)}, ${lng.toFixed(5)} · ${fmtRelative(latest?.ts)}`;
@@ -167,7 +167,7 @@ function openDispatchModal(alert) {
           </div>
           <div class="field" style="margin-top:12px">
             <span>Message template</span>
-            <textarea id="dispatch-message">NeuroLink Wear emergency dispatch: Margaret Thompson may need immediate assistance${alert ? ` (${alert.title})` : ''}. Please respond. Live GPS is available on the Safety dashboard.</textarea>
+            <textarea id="dispatch-message">NeuroLink Wear emergency dispatch: Abdelrahman may need immediate assistance${alert ? ` (${alert.title})` : ''}. Please respond. Live GPS is available on the Safety dashboard.</textarea>
           </div>
           <div class="row">
             <span class="muted" style="font-size:12px">Channel:</span>

@@ -140,7 +140,7 @@ function deviceModal(existing = null) {
     body: `
       <div class="form-grid">
         <label class="field"><span>Device name</span>
-          <input id="d-name" value="${esc(existing?.name || '')}" placeholder="Margaret's NeuroLink Band"></label>
+          <input id="d-name" value="${esc(existing?.name || '')}" placeholder="Abdelrahman's NeuroLink Band"></label>
         <label class="field"><span>Model</span>
           <input id="d-model" value="${esc(existing?.model || 'NeuroLink Band NL-200')}"></label>
         <label class="field"><span>Serial number</span>
@@ -220,7 +220,7 @@ function deviceModal(existing = null) {
       if (existing) await api.updateDevice(existing.id, body);
       else await api.createDevice(body);
       closeModal();
-      toast('success', existing ? 'Device configuration saved' : 'Device paired', `${body.name} is linked to Margaret's profile.`);
+      toast('success', existing ? 'Device configuration saved' : 'Device paired', `${body.name} is linked to Abdelrahman's profile.`);
       renderTab();
     } catch (err) {
       toast('error', 'Save failed', err.message);
@@ -332,7 +332,7 @@ async function renderThresholds(box) {
       </div>
       <div class="card-body">
         <p class="muted" style="font-size:12.5px;margin-bottom:12px">
-          Alerts fire the moment a live reading crosses these limits. Values are tailored to Margaret's clinical profile
+          Alerts fire the moment a live reading crosses these limits. Values are tailored to Abdelrahman's clinical profile
           (hypertension, mild COPD). Changes take effect on the next reading — typically within 2 seconds.
         </p>
         <div class="threshold-row">
@@ -519,7 +519,7 @@ async function renderPatient(box) {
       </div>
       <div class="card-body">
         <div class="row" style="align-items:center;margin-bottom:16px">
-          <span class="avatar lg" style="background:${esc(p.avatar_color)}">MT</span>
+          <span class="avatar lg" style="background:${esc(p.avatar_color)}">${esc((p.name || 'AB').split(' ').map((x) => x[0]).slice(0, 2).join('').toUpperCase())}</span>
           <div>
             <strong style="font-size:17px">${esc(p.name)}</strong>
             <div class="muted">${p.age} · ${esc(p.gender)} · ${esc(p.room)}</div>

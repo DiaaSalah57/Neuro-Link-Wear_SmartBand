@@ -123,7 +123,7 @@ async def process_device_payload(d: dict, source: str = "device") -> dict:
     cal = cal_observe(reading)          # personal baselines adapt online
     with get_db() as db:
         th = one(db.execute("SELECT * FROM thresholds WHERE patient_id=1")) or {}
-    patient = {"name": "Margaret Thompson", "age": 78}
+        patient = one(db.execute("SELECT * FROM patients WHERE id=1")) or {"name": "Abdelrahman", "age": 78}
     events = evaluate(reading, th, patient, cal)
 
     sim = get_simulator()

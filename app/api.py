@@ -352,7 +352,7 @@ def dispatch(body: DispatchIn, user: dict = Depends(require_staff)):
             if not c:
                 continue
             msg = body.message or (
-                f"NeuroLink Wear emergency dispatch: Margaret Thompson may need immediate assistance. "
+                f"NeuroLink Wear emergency dispatch: Abdelrahman may need immediate assistance. "
                 f"Please respond. Live dashboard: NeuroLink Wear Safety view."
             )
             cur = db.execute(
