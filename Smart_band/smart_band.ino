@@ -9,11 +9,19 @@
 #include <Adafruit_MLX90614.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
+#include "wifi_provisioning.h"
 // =====================================================
 //              WiFi & HiveMQ Cloud Credentials
 // =====================================================
-const char* ssid        = "Bahaa";
-const char* password    = "1732001#";
+// SSID & password are now stored in NVS (non-volatile flash)
+// and configured through a built-in Captive Portal.
+// On first boot, connect your phone/PC to "NeuroLink-Setup"
+// (open WiFi) and the setup page will pop up automatically.
+// To re-provision later: hold BOOT button on the ESP32 for 5s
+// during boot, OR call clearWifiCredentials() in code.
+// MQTT credentials below are still compiled in (these are
+// server-side, not per-network) but they could also be moved
+// into NVS the same way if you want.
 
 const char* mqtt_server = "831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud";
 const int   mqtt_port   = 8883;
@@ -210,12 +218,17 @@ void setup() {
   u8g2.drawStr(5, 45, "Connecting WiFi...");
   u8g2.sendBuffer();
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  int wifiAttempts = 0;
-  while (WiFi.status() != WL_CONNECTED && wifiAttempts < 25) {
-    delay(400);
-    wifiAttempts++;
+bool wifiOK = wifiProvisionConnect();
+  if (!wifiOK) {
+    // Portal is running. Show guidance on the OLED so the user
+    // can provision the device even with no companion app.
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawStr(2, 14, "WiFi Setup Mode");
+    u8g2.drawStr(2, 30, "Connect phone to:");
+    u8g2.drawStr(2, 44, "  NeuroLink-Setup");
+    u8g2.drawStr(2, 58, "Open 192.168.4.1");
+    u8g2.sendBuffer();
   }
 
   secureClient.setInsecure();
@@ -251,6 +264,9 @@ void setup() {
 //                        LOOP
 // =====================================================
 void loop() {
+  // Handle captive portal requests if WiFi isn't connected yet
+  wifiProvisionLoop();
+
   if (!client.connected()) {
     reconnectMQTT();
   }
@@ -315,12 +331,10 @@ void loop() {
 
     if (client.connected()) {
       String payload = "{\n";
-      payload += "  \"ts\": \"" + getTimestamp() + "\",\n";
       payload += "  \"Heart_Rate\": " + String(beatAvg) + ",\n";
       payload += "  \"Body_Temperature\": " + String(objectTemperature > 0 ? objectTemperature : 36.6, 1) + ",\n";
       payload += "  \"Blood_Oxygen\": " + String(bloodOxygen, 1) + ",\n";
       payload += "  \"Step_Count\": " + String(stepCount) + ",\n";
-      payload += "  \"Activity_Status\": \"" + activityStatus + "\",\n";
       payload += "  \"Accel_X\": " + String(accelX, 2) + ",\n";
       payload += "  \"Accel_Y\": " + String(accelY, 2) + ",\n";
       payload += "  \"Accel_Z\": " + String(accelZ, 2) + ",\n";

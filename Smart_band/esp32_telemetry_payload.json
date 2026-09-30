@@ -1,11 +1,8 @@
 {
-  "device_id": "NLW-8842-A",
-  "ts": "2026-09-27T12:00:00Z",
   "Heart_Rate": 178,
   "Body_Temperature": 36.6,
   "Blood_Oxygen": 96.0,
   "Step_Count": 359,
-  "Activity_Status": "Running",
   "Accel_X": -1.41,
   "Accel_Y": 0.75,
   "Accel_Z": 0.42,
