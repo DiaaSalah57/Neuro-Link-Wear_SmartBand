@@ -16,7 +16,7 @@ const char* ssid        = "Bahaa";
 const char* password    = "1732001#";
 
 const char* mqtt_server = "831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud";
-const int   mqtt_port   = 8883;
+const int   mqtt_port   =  8883 ;
 const char* mqtt_user   = "Neuro_link";
 const char* mqtt_pass   = "smartband";
 
@@ -315,12 +315,10 @@ void loop() {
 
     if (client.connected()) {
       String payload = "{\n";
-      payload += "  \"ts\": \"" + getTimestamp() + "\",\n";
       payload += "  \"Heart_Rate\": " + String(beatAvg) + ",\n";
       payload += "  \"Body_Temperature\": " + String(objectTemperature > 0 ? objectTemperature : 36.6, 1) + ",\n";
       payload += "  \"Blood_Oxygen\": " + String(bloodOxygen, 1) + ",\n";
       payload += "  \"Step_Count\": " + String(stepCount) + ",\n";
-      payload += "  \"Activity_Status\": \"" + activityStatus + "\",\n";
       payload += "  \"Accel_X\": " + String(accelX, 2) + ",\n";
       payload += "  \"Accel_Y\": " + String(accelY, 2) + ",\n";
       payload += "  \"Accel_Z\": " + String(accelZ, 2) + ",\n";
