@@ -280,10 +280,8 @@ class WearableSimulator:
         return True
 
     def create_alert(self, event: dict, reading: dict, created_by: str = "system") -> dict | None:
+        patient = {"name": "Margaret Thompson", "age": 78, "conditions": "Hypertension, mild COPD, osteoarthritis"}
         with get_db() as db:
-            patient = one(db.execute("SELECT * FROM patients WHERE id=1")) or {
-                "name": "Abdelrahman", "age": 78, "conditions": "Hypertension, mild COPD, osteoarthritis"
-            }
             th = one(db.execute("SELECT * FROM thresholds WHERE patient_id=1")) or {}
         explanation, recommendation, _urgency = generate_explanation(
             event["type"], {**event.get("readings", {}), "time": _now_iso()}, patient
@@ -310,12 +308,11 @@ class WearableSimulator:
     def check_inactivity(self) -> dict | None:
         with get_db() as db:
             th = one(db.execute("SELECT * FROM thresholds WHERE patient_id=1")) or {}
-            patient = one(db.execute("SELECT * FROM patients WHERE id=1")) or {"name": "Abdelrahman"}
         limit = th.get("inactivity_minutes", 90)
         idle_min = (time.monotonic() - self.last_movement) / 60.0
         if idle_min >= limit and time.monotonic() - self.inactivity_alerted_at > 1800:
             self.inactivity_alerted_at = time.monotonic()
-            return inactivity_event(int(idle_min), patient)
+            return inactivity_event(int(idle_min), {"name": "Margaret Thompson"})
         return None
 
     # ── main loop ────────────────────────────────────────────────────────
@@ -327,9 +324,9 @@ class WearableSimulator:
                 reading = self.next_reading()
 
                 # Evaluate with patient thresholds
+                patient = {"name": "Margaret Thompson", "age": 78}
                 with get_db() as db:
                     th = one(db.execute("SELECT * FROM thresholds WHERE patient_id=1")) or {}
-                    patient = one(db.execute("SELECT * FROM patients WHERE id=1")) or {"name": "Abdelrahman", "age": 78}
                 cal = cal_observe(reading)          # personal baselines adapt online
                 events = evaluate(reading, th, patient, cal)
 

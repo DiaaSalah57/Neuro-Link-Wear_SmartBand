@@ -87,7 +87,7 @@ async def lifespan(app: FastAPI):
                         "host": dev["mqtt_host"], "port": dev["mqtt_port"] or 8883,
                         "username": dev["mqtt_username"] or "",
                         "password": dev["mqtt_password"] or "",
-                        "topic": dev["mqtt_topic"] or "neurolink/sensors/data",
+                        "topic": dev["mqtt_topic"] or "neurolink/wear/telemetry",
                         "tls": bool(dev["mqtt_tls"]),
                         "client_id": f"neurolink-bridge-{dev['serial']}",
                     },
@@ -106,15 +106,10 @@ async def lifespan(app: FastAPI):
         db.execute("DELETE FROM location_history WHERE ts<?", (cutoff,))
 
     sim = get_simulator(on_message=on_simulator_message)
-    task = None
-    if os.environ.get("NEUROLINK_SIMULATOR", "0") == "1":
-        task = asyncio.create_task(sim.run())
-        print("[NeuroLink Wear] API + dashboard ready — simulator streaming.")
-    else:
-        print("[NeuroLink Wear] API + dashboard ready — live MQTT broker mode (simulator disabled).")
+    task = asyncio.create_task(sim.run())
+    print("[NeuroLink Wear] API + dashboard ready — simulator streaming.")
     yield
-    if task:
-        task.cancel()
+    task.cancel()
 
 
 app = FastAPI(
@@ -166,12 +161,9 @@ async def websocket_endpoint(ws: WebSocket):
         return
     await manager.connect(ws)
     # Greet with the freshest reading so the UI renders instantly
-    from . import mqtt as mqtt_mod
     with get_db() as db:
         latest = one(db.execute("SELECT * FROM vitals ORDER BY ts DESC, id DESC LIMIT 1"))
-        dev = one(db.execute("SELECT id,name,model,serial,firmware,battery,charging,online,status,mqtt_host,mqtt_port,mqtt_topic,mqtt_username,mqtt_password,mqtt_tls,protocol,last_seen FROM devices WHERE id=1"))
-    if dev:
-        dev["bridge_status"] = mqtt_mod.bridge_status().get("status", "stopped")
+        dev = one(db.execute("SELECT id,name,model,serial,battery,charging,online,status,last_seen FROM devices WHERE id=1"))
     if latest:
         latest["device"] = dev
         await ws.send_text(json.dumps({"type": "telemetry", "data": latest}))

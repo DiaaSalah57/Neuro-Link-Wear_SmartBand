@@ -18,6 +18,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from . import equations as eq
+from . import ml_tier
 
 # Training-set normalisation bounds (from models/pipeline_stats.json)
 GSR_MIN, GSR_MAX = 0.10, 19.93
@@ -182,6 +183,19 @@ def evaluate(reading: dict, thresholds: dict, patient: dict, cal: dict | None = 
             "type": "Fatigue",
             "severity": "low",
             "title": f"Fatigue marker — HRV {hrv:.0f} ms",
+            "readings": ctx,
+        })
+
+    # ── Tier 3: Trained ML model (Isolation Forest corroborating tier) ───
+    # Purely additive: can only append a "General Anomaly" when no Tier 1/2
+    # event fired; never suppresses or modifies Tier 1/2 detections.
+    ml_res = ml_tier.ml_anomaly(reading, cal)
+    ctx["ml_tier"] = ml_res
+    if ml_res.get("available") and ml_res.get("is_anomaly") and not events:
+        events.append({
+            "type": "General Anomaly",
+            "severity": "low",
+            "title": f"General anomaly — ML score {ml_res['score']:.3f}",
             "readings": ctx,
         })
 

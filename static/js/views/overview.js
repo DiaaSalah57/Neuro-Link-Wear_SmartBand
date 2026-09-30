@@ -2,14 +2,14 @@
  * NeuroLink Wear — Live Overview: realtime vitals, IMU motion, live feed,
  * device health and AI insight cards.
  */
-import { api } from '../api.js?v=20261001-1';
-import { store } from '../store.js?v=20261001-1';
-import { onWS } from '../ws.js?v=20261001-1';
+import { api } from '../api.js?v=20261001-2';
+import { store } from '../store.js?v=20261001-2';
+import { onWS } from '../ws.js?v=20261001-2';
 import {
   $, $$, esc, icons, toast, fmtTime, fmtRelative, fmtDateTime, fmtNum,
   skeletonCards, emptyState, typeIcon,
-} from '../ui.js?v=20261001-1';
-import { sparkline } from '../charts.js?v=20261001-1';
+} from '../ui.js?v=20261001-2';
+import { sparkline } from '../charts.js?v=20261001-2';
 
 let unsubWS = null;
 let unsubStore = null;
@@ -59,6 +59,7 @@ function feedRow(item) {
         <div class="meta">
           <span>${fmtRelative(item.ts)}</span>
           ${item.badge ? `<span class="badge ${item.severity || 'neutral'}">${esc(item.badge)}</span>` : ''}
+          ${item.mlBadge ? `<span class="badge purple ml-tier-badge" data-tier="ml">${esc(item.mlBadge)}</span>` : ''}
         </div>
       </div>
     </div>`;
@@ -136,10 +137,15 @@ function renderFeed() {
 }
 
 function pushAlert(alert) {
+  const isTier3 = alert.type === 'General Anomaly';
+  const mlScore = alert.readings && alert.readings.ml_tier && typeof alert.readings.ml_tier.score === 'number'
+    ? ` (${alert.readings.ml_tier.score.toFixed(3)})`
+    : '';
   feedItems.unshift({
     kind: 'alert', ts: alert.ts, tsAdded: Date.now(),
     title: alert.title, severity: alert.severity,
     badge: `${alert.type} · ${alert.severity}`,
+    mlBadge: isTier3 ? `ML Model · AI-flagged${mlScore}` : '',
   });
   feedItems = feedItems.slice(0, 30);
   renderFeed();

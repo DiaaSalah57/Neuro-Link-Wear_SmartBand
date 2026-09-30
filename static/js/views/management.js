@@ -4,11 +4,11 @@
  * personalized health thresholds, patient profile, (admin) team users
  * and the calibration lab (equation-based AI baselines).
  */
-import { api, auth } from '../api.js?v=20261001-1';
+import { api, auth } from '../api.js?v=20261001-2';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, confirmDialog,
   emptyState, skeletonLines, fmtRelative,
-} from '../ui.js?v=20261001-1';
+} from '../ui.js?v=20261001-2';
 
 let activeTab = 'contacts';
 const isAdmin = () => auth.user && auth.user.role === 'admin';

@@ -100,11 +100,9 @@ def update_patient(body: PatientIn, user: dict = Depends(require_admin)):
 def telemetry_latest(user: dict = Depends(require_staff)):
     with get_db() as db:
         v = one(db.execute("SELECT * FROM vitals ORDER BY ts DESC, id DESC LIMIT 1"))
-        dev = one(db.execute("SELECT id,name,model,serial,firmware,battery,charging,online,status,mqtt_host,mqtt_port,mqtt_topic,mqtt_username,mqtt_password,mqtt_tls,protocol,last_seen FROM devices WHERE id=1"))
-    if dev:
-        dev["bridge_status"] = mqtt_mod.bridge_status().get("status", "stopped")
+        dev = one(db.execute("SELECT id,name,model,serial,firmware,battery,charging,online,status,mqtt_host,mqtt_port,mqtt_topic,mqtt_tls,protocol,last_seen FROM devices WHERE id=1"))
     if not v:
-        return {"device": dev, "waiting": True}
+        raise HTTPException(404, "No telemetry yet")
     v["device"] = dev
     return v
 
@@ -183,35 +181,13 @@ async def telemetry_ingest(body: IngestIn, request: Request):
 
 
 @router.post("/demo/trigger")
-async def demo_trigger(kind: str = Query(...), user: dict = Depends(require_staff)):
-    """Demo controls: drive the simulator into a scripted scenario (and emit one immediate tick if simulator loop is off)."""
-    import os
+def demo_trigger(kind: str = Query(...), user: dict = Depends(require_staff)):
+    """Demo controls: drive the simulator into a scripted scenario."""
     mapping = {"fall": "fall", "stress": "stress", "fever": "fever", "desat": "desat", "normal": "baseline", "walk": "walk"}
     if kind not in mapping:
         raise HTTPException(400, f"kind must be one of {list(mapping)}")
-    sim = get_simulator()
-    sim.force_phase(mapping[kind], 28.0)
-
-    created_alerts = []
-    if os.environ.get("NEUROLINK_SIMULATOR", "0") != "1":
-        from .calibration import observe as cal_observe
-        from .detection import evaluate
-        reading = sim.next_reading()
-        with get_db() as db:
-            th = one(db.execute("SELECT * FROM thresholds WHERE patient_id=1")) or {}
-            patient = one(db.execute("SELECT * FROM patients WHERE id=1")) or {"name": "Abdelrahman", "age": 78}
-        cal = cal_observe(reading)
-        events = evaluate(reading, th, patient, cal)
-        for ev in events:
-            alert = sim.create_alert(ev, reading, created_by="drill")
-            if alert:
-                created_alerts.append(alert)
-        sim.persist(reading)
-        if sim.on_message:
-            await sim.on_message({"type": "telemetry", "data": reading})
-            for a in created_alerts:
-                await sim.on_message({"type": "alert", "data": a})
-    return {"ok": True, "phase": mapping[kind], "alerts": created_alerts}
+    get_simulator().force_phase(mapping[kind], 28.0)
+    return {"ok": True, "phase": mapping[kind]}
 
 
 # ────────────────────────────────────────────────────────────── alerts ──────
@@ -302,106 +278,6 @@ class SosIn(BaseModel):
     note: str = "Emergency SOS button pressed from the dashboard"
 
 
-class FallCheckIn(BaseModel):
-    action: str = "ok"        # 'ok' (false alarm / I'm OK) | 'escalate' (no answer in 30s or confirmed critical)
-    reason: str = "button"    # 'button' | 'timeout'
-
-
-@router.post("/alerts/fall-check/start")
-async def start_fall_check(user: dict = Depends(require_staff)):
-    """Create or return an active Fall Detected alert to run the 30-second 'Are you OK?' verification."""
-    sim = get_simulator()
-    with get_db() as db:
-        existing = one(db.execute(
-            "SELECT * FROM alerts WHERE type='Fall Detected' AND status='active' ORDER BY id DESC LIMIT 1"
-        ))
-    if existing:
-        return existing
-    event = {
-        "type": "Fall Detected",
-        "severity": "critical",
-        "title": "Fall detected — awaiting 30s 'Are you OK?' verification",
-        "readings": {
-            "heart_rate": round(sim.hr, 1), "spo2": round(sim.spo2, 1),
-            "temperature": round(sim.temp, 2), "gsr": round(sim.gsr, 3),
-            "hrv": round(sim.hrv, 1), "accel_mag": 3.2, "gyro_mag": 2.9,
-            "activity": "Resting", "time": now_iso(),
-        },
-    }
-    alert = sim.create_alert(event, {"lat": sim.lat, "lng": sim.lng}, created_by=user["name"])
-    if alert and sim.on_message:
-        await sim.on_message({"type": "alert", "data": alert})
-    return alert
-
-
-@router.post("/alerts/{alert_id}/fall-check")
-async def resolve_or_escalate_fall_check(alert_id: int, body: FallCheckIn, user: dict = Depends(require_staff)):
-    """
-    Handle the 30-second 'Are you OK?' fall verification response:
-    - action='ok': wearer/caregiver pressed 'I'm OK' -> resolves alert as false alarm, cancels emergency.
-    - action='escalate': 30s countdown expired with no answer (or 'Call Help Now' pressed) -> confirms critical
-      emergency and auto-dispatches primary (P1) emergency contacts.
-    """
-    sim = get_simulator()
-    ts = now_iso()
-    with get_db() as db:
-        a = one(db.execute("SELECT * FROM alerts WHERE id=?", (alert_id,)))
-        if not a:
-            raise HTTPException(404, "Alert not found")
-
-        if body.action == "ok":
-            new_title = "Fall check-in: Confirmed OK (false alarm — escalation cancelled)"
-            db.execute(
-                """UPDATE alerts SET status='resolved', severity='low', title=?,
-                                     resolved_at=?, resolved_by=?, acknowledged_by=?
-                   WHERE id=?""",
-                (new_title, ts, user["name"], user["name"], alert_id),
-            )
-            updated = one(db.execute("SELECT * FROM alerts WHERE id=?", (alert_id,)))
-            dispatched = []
-            try:
-                mqtt_mod.publish_alert({"severity": "normal", "title": "Check-in OK", "recommendation": "Escalation cancelled"})
-            except Exception:
-                pass
-        else:
-            why = "no response in 30s" if body.reason == "timeout" else "confirmed emergency"
-            new_title = f"CRITICAL FALL EMERGENCY ({why}) — help called"
-            db.execute(
-                "UPDATE alerts SET status='active', severity='critical', title=? WHERE id=?",
-                (new_title, alert_id),
-            )
-            updated = one(db.execute("SELECT * FROM alerts WHERE id=?", (alert_id,)))
-            p1_contacts = rows(db.execute(
-                "SELECT * FROM contacts WHERE can_dispatch=1 AND priority=1 ORDER BY id ASC"
-            ))
-            if not p1_contacts:
-                p1_contacts = rows(db.execute(
-                    "SELECT * FROM contacts WHERE can_dispatch=1 ORDER BY priority ASC, id ASC LIMIT 2"
-                ))
-            dispatched = []
-            msg = (
-                f"EMERGENCY AUTO-DISPATCH: Fall detected for Abdelrahman ({why}). "
-                f"No 'I'm OK' confirmation received within 30 seconds. Immediate assistance required."
-            )
-            for c in p1_contacts:
-                cur = db.execute(
-                    "INSERT INTO dispatches(alert_id,contact_id,channel,status,message,sent_by,ts) VALUES(?,?,?,?,?,?,?)",
-                    (alert_id, c["id"], "call", "delivered", msg, f"auto-escalation ({user['name']})", ts),
-                )
-                dispatched.append(one(db.execute(
-                    """SELECT d.*, c.name as contact_name, c.relationship, c.phone FROM dispatches d
-                       JOIN contacts c ON c.id=d.contact_id WHERE d.id=?""", (cur.lastrowid,)
-                )))
-            try:
-                mqtt_mod.publish_alert({"severity": "danger", "title": "Fall Emergency", "recommendation": "Help called"})
-            except Exception:
-                pass
-
-    if sim.on_message:
-        await sim.on_message({"type": "alert_updated", "data": updated})
-    return {"ok": True, "action": body.action, "alert": updated, "dispatched": dispatched}
-
-
 @router.post("/alerts/sos")
 async def sos(body: SosIn, user: dict = Depends(require_staff)):
     """One-press emergency trigger from the sticky quick-actions bar."""
@@ -474,7 +350,7 @@ def dispatch(body: DispatchIn, user: dict = Depends(require_staff)):
             if not c:
                 continue
             msg = body.message or (
-                f"NeuroLink Wear emergency dispatch: Abdelrahman may need immediate assistance. "
+                f"NeuroLink Wear emergency dispatch: Margaret Thompson may need immediate assistance. "
                 f"Please respond. Live dashboard: NeuroLink Wear Safety view."
             )
             cur = db.execute(
@@ -579,11 +455,11 @@ class DeviceIn(BaseModel):
     serial: str
     firmware: str = "2.4.1"
     status: str = "paired"
-    mqtt_host: str = "831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud"
-    mqtt_port: int = 8883
-    mqtt_topic: str = "neurolink/sensors/data"
-    mqtt_username: str = "Neuro_link"
-    mqtt_password: str = "smartband"
+    mqtt_host: str = "broker.hivemq.com"
+    mqtt_port: int = 1883
+    mqtt_topic: str = "neurolink/sensors"
+    mqtt_username: str = ""
+    mqtt_password: str = ""
     mqtt_tls: bool = True
     protocol: str = "mqtt"
     patient_id: int | None = 1
@@ -596,7 +472,7 @@ def list_devices(user: dict = Depends(require_staff)):
 
 
 @router.post("/devices")
-async def create_device(body: DeviceIn, user: dict = Depends(require_admin)):
+def create_device(body: DeviceIn, user: dict = Depends(require_admin)):
     with get_db() as db:
         if one(db.execute("SELECT id FROM devices WHERE serial=?", (body.serial,))):
             raise HTTPException(409, "A device with this serial already exists")
@@ -608,26 +484,11 @@ async def create_device(body: DeviceIn, user: dict = Depends(require_admin)):
              body.mqtt_port, body.mqtt_topic, body.mqtt_username, body.mqtt_password,
              1 if body.mqtt_tls else 0, body.protocol, body.patient_id, now_iso()),
         )
-        dev = one(db.execute("SELECT * FROM devices WHERE id=?", (cur.lastrowid,)))
-    if dev and dev.get("mqtt_host"):
-        import asyncio
-        async def _on_payload(payload, _src="mqtt"):
-            await process_device_payload(payload, source=_src)
-        mqtt_mod.start_bridge(
-            {
-                "host": dev["mqtt_host"], "port": dev["mqtt_port"] or 8883,
-                "username": dev["mqtt_username"] or "", "password": dev["mqtt_password"] or "",
-                "topic": dev["mqtt_topic"] or "neurolink/sensors/data",
-                "tls": bool(dev["mqtt_tls"]), "client_id": f"neurolink-bridge-{dev['serial']}",
-            },
-            _on_payload,
-            loop=asyncio.get_running_loop(),
-        )
-    return dev
+        return one(db.execute("SELECT * FROM devices WHERE id=?", (cur.lastrowid,)))
 
 
 @router.put("/devices/{device_id}")
-async def update_device(device_id: int, body: DeviceIn, user: dict = Depends(require_admin)):
+def update_device(device_id: int, body: DeviceIn, user: dict = Depends(require_admin)):
     with get_db() as db:
         if not one(db.execute("SELECT id FROM devices WHERE id=?", (device_id,))):
             raise HTTPException(404, "Device not found")
@@ -639,22 +500,7 @@ async def update_device(device_id: int, body: DeviceIn, user: dict = Depends(req
              body.mqtt_port, body.mqtt_topic, body.mqtt_username, body.mqtt_password,
              1 if body.mqtt_tls else 0, body.protocol, body.patient_id, device_id),
         )
-        dev = one(db.execute("SELECT * FROM devices WHERE id=?", (device_id,)))
-    if dev and dev.get("mqtt_host"):
-        import asyncio
-        async def _on_payload(payload, _src="mqtt"):
-            await process_device_payload(payload, source=_src)
-        mqtt_mod.start_bridge(
-            {
-                "host": dev["mqtt_host"], "port": dev["mqtt_port"] or 8883,
-                "username": dev["mqtt_username"] or "", "password": dev["mqtt_password"] or "",
-                "topic": dev["mqtt_topic"] or "neurolink/sensors/data",
-                "tls": bool(dev["mqtt_tls"]), "client_id": f"neurolink-bridge-{dev['serial']}",
-            },
-            _on_payload,
-            loop=asyncio.get_running_loop(),
-        )
-    return dev
+        return one(db.execute("SELECT * FROM devices WHERE id=?", (device_id,)))
 
 
 @router.delete("/devices/{device_id}")

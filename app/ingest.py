@@ -82,11 +82,11 @@ def build_reading(d: dict) -> dict:
     sim = get_simulator()
     reading = {
         "ts": _device_ts(d),
-        "heart_rate": _num(_first(d, "Heart_Rate", "heart_rate"), 0.0),
-        "temperature": _num(_first(d, "Body_Temperature", "temperature"), 0.0),
-        "spo2": _num(_first(d, "Blood_Oxygen", "spo2"), 0.0),
-        "gsr": _num(_first(d, "GSR_Value", "gsr"), 0.0),
-        "hrv": _num(_first(d, "HRV", "hrv"), 0.0),
+        "heart_rate": _num(_first(d, "Heart_Rate", "heart_rate"), 72.0, positive=True),
+        "temperature": _num(_first(d, "Body_Temperature", "temperature"), 36.6, positive=True),
+        "spo2": _num(_first(d, "Blood_Oxygen", "spo2"), 97.0, positive=True),
+        "gsr": _num(_first(d, "GSR_Value", "gsr"), 0.4),
+        "hrv": _num(_first(d, "HRV", "hrv"), 50.0, positive=True),
         "steps": int(_num(_first(d, "Step_Count", "steps"), 0.0)),
         "activity": _first(d, "Activity_Status", "activity") or "Resting",
         "accel_x": _num(_first(d, "Accel_X", "accel_x"), 0.0),

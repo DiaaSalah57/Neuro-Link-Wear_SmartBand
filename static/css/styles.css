@@ -723,6 +723,19 @@ input[type="range"] { accent-color: var(--accent); width: 100%; }
   display: inline-block; animation: blink 1.3s infinite;
 }
 
+.ml-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  border: 1px solid rgba(91, 75, 214, 0.35);
+}
+.ml-tier-badge svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+}
+
 /* ── Fall Detected: "Are you OK?" 30s verification card ──────────────── */
 .fall-check-modal {
   background: radial-gradient(circle at 50% 50%, rgba(30, 22, 96, 0.55) 0%, rgba(7, 6, 20, 0.88) 70%);

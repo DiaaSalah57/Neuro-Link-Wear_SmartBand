@@ -225,9 +225,28 @@ CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS calibration (
+    patient_id  INTEGER PRIMARY KEY,
+    state       TEXT NOT NULL,
+    updated_at  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS calibration_refs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id  INTEGER NOT NULL,
+    kind        TEXT NOT NULL,
+    value       REAL NOT NULL,
+    band_value  REAL,
+    applied     TEXT NOT NULL,
+    note        TEXT,
+    ts          TEXT NOT NULL
+);
 """
 
 
 def init_db() -> None:
     with get_db() as db:
         db.executescript(SCHEMA)
+    from .seed import seed_all
+    seed_all()
