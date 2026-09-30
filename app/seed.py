@@ -34,7 +34,7 @@ import os
 
 
 def seed_all() -> None:
-    seed_demo = os.environ.get("NEUROLINK_SEED_DEMO", "1") == "1"
+    seed_demo = os.environ.get("NEUROLINK_SEED_DEMO", "0") == "1"
     with get_db() as db:
         if one(db.execute("SELECT id FROM users LIMIT 1")):
             return  # already seeded

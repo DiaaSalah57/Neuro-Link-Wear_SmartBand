@@ -12,8 +12,11 @@ Verifies the equation-based AI (no training dataset):
 Run:  .venv/bin/python calib_suite.py   (server must be running on :8000)
 """
 import json
+import os
 import urllib.request
 import urllib.error
+
+os.environ["NEUROLINK_TEST_SENTINEL"] = "1"
 
 BASE = "http://127.0.0.1:8000"
 PASS = 0
@@ -157,6 +160,10 @@ except ValueError:
     check("bad reference kind rejected", True)
 
 # auto_fit over the real vitals stream (single-wearer table)
+with get_db() as db:
+    if (one(db.execute("SELECT COUNT(*) AS n FROM vitals")) or {}).get("n", 0) < 100:
+        from app.seed import _seed_vitals
+        _seed_vitals(db)
 fit = cal.auto_fit(1, hours=24)
 check("auto_fit returns diff shape", {"before", "after", "points", "changed"} <= set(fit))
 check("auto_fit sees day of vitals", fit["points"] > 100, f"points={fit['points']}")
