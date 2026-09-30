@@ -2,14 +2,14 @@
  * NeuroLink Wear — Live Overview: realtime vitals, IMU motion, live feed,
  * device health and AI insight cards.
  */
-import { api } from '../api.js?v=20260927-5';
-import { store } from '../store.js?v=20260927-5';
-import { onWS } from '../ws.js?v=20260927-5';
+import { api } from '../api.js?v=20261001-1';
+import { store } from '../store.js?v=20261001-1';
+import { onWS } from '../ws.js?v=20261001-1';
 import {
   $, $$, esc, icons, toast, fmtTime, fmtRelative, fmtDateTime, fmtNum,
   skeletonCards, emptyState, typeIcon,
-} from '../ui.js?v=20260927-5';
-import { sparkline } from '../charts.js?v=20260927-5';
+} from '../ui.js?v=20261001-1';
+import { sparkline } from '../charts.js?v=20261001-1';
 
 let unsubWS = null;
 let unsubStore = null;
@@ -239,6 +239,7 @@ export default {
             <div class="card-head"><h3>${icons.bolt} Quick Actions</h3></div>
             <div class="card-body" style="display:grid;gap:9px">
               <button class="btn danger block" id="qa-sos">${icons.shield}<span>Trigger emergency SOS</span></button>
+              <button class="btn soft block" id="qa-fallcheck">${icons.activity}<span>Fall Detected · "Are you OK?" (30s)</span></button>
               <button class="btn primary block" id="qa-dispatch">${icons.phone}<span>Dispatch emergency contacts</span></button>
               <button class="btn ghost block" id="qa-safety">${icons.map}<span>Open safety &amp; live map</span></button>
               <div class="divider"></div>
@@ -338,6 +339,7 @@ export default {
       }
     };
     $('#qa-sos').onclick = () => window.dispatchEvent(new CustomEvent('nlw:sos'));
+    $('#qa-fallcheck').onclick = () => window.dispatchEvent(new CustomEvent('nlw:fallcheck'));
     $('#qa-dispatch').onclick = () => { location.hash = '#/safety?dispatch=1'; };
     $('#qa-safety').onclick = () => { location.hash = '#/safety'; };
     $$('[data-demo]').forEach((btn) => {

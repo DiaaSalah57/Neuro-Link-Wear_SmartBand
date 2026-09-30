@@ -2,12 +2,12 @@
  * NeuroLink Wear — AI Insights & Alerts: anomaly alerts with severity badges,
  * LLM plain-language explanations, recommendations, plus the AI summary feed.
  */
-import { api } from '../api.js?v=20260927-5';
-import { onWS } from '../ws.js?v=20260927-5';
+import { api } from '../api.js?v=20261001-1';
+import { onWS } from '../ws.js?v=20261001-1';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, emptyState,
   typeIcon, skeletonCards, confirmDialog,
-} from '../ui.js?v=20260927-5';
+} from '../ui.js?v=20261001-1';
 
 let unsubWS = null;
 let state = { status: 'all', severity: 'all', type: 'all' };
@@ -66,6 +66,7 @@ function alertCard(a) {
       </div>` : ''}
 
       <div class="alert-actions">
+        ${a.type === 'Fall Detected' && a.status !== 'resolved' ? `<button class="btn soft sm" data-act="fallcheck">${icons.activity} Are you OK? (30s check)</button>` : ''}
         ${a.status === 'active' ? `<button class="btn warn sm" data-act="ack">${icons.check} Acknowledge</button>` : ''}
         ${a.status !== 'resolved' ? `<button class="btn primary sm" data-act="resolve">${icons.check} Mark resolved</button>` : ''}
         <button class="btn ghost sm" data-act="dispatch">${icons.phone} Dispatch contacts</button>
@@ -138,7 +139,9 @@ async function loadAlerts() {
       const alert = data.data.find((x) => x.id === id);
       const act = btn.dataset.act;
       try {
-        if (act === 'ack') {
+        if (act === 'fallcheck') {
+          window.dispatchEvent(new CustomEvent('nlw:fallcheck', { detail: alert }));
+        } else if (act === 'ack') {
           btn.disabled = true;
           await api.acknowledgeAlert(id);
           toast('success', 'Alert acknowledged', 'Your name is now attached to the incident timeline.');

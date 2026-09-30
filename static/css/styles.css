@@ -723,6 +723,123 @@ input[type="range"] { accent-color: var(--accent); width: 100%; }
   display: inline-block; animation: blink 1.3s infinite;
 }
 
+/* ── Fall Detected: "Are you OK?" 30s verification card ──────────────── */
+.fall-check-modal {
+  background: radial-gradient(circle at 50% 50%, rgba(30, 22, 96, 0.55) 0%, rgba(7, 6, 20, 0.88) 70%);
+  padding: 28px;
+}
+.fall-check-card {
+  background: #070614;
+  border: 1.5px solid #2b2458;
+  border-radius: 18px;
+  padding: 30px 34px 28px;
+  width: min(500px, 100%);
+  color: #ffffff;
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.75), 0 0 80px rgba(25, 211, 243, 0.08);
+  animation: modal-in .22s cubic-bezier(.2, .9, .3, 1.15);
+}
+.fall-check-tag {
+  color: #ff4769;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.fall-check-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.fall-check-title {
+  color: #ffffff;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.fall-check-timer {
+  color: #19d3f3;
+  font-family: var(--font-mono);
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1;
+  transition: color .2s ease;
+}
+.fall-check-timer.urgent {
+  color: #ff4769;
+}
+.fall-check-bar-track {
+  margin: 26px 0 14px;
+  height: 12px;
+  background: #261f52;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.fall-check-bar-fill {
+  height: 100%;
+  background: #19d3f3;
+  border-radius: 999px;
+  transition: width 0.3s linear, background-color 0.2s ease;
+}
+.fall-check-bar-fill.urgent {
+  background: #ff4769;
+}
+.fall-check-hint {
+  color: #9ca3af;
+  font-size: 13.5px;
+  font-weight: 400;
+}
+.fall-check-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+.fall-btn-ok {
+  flex: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: none;
+  background: #19d3f3;
+  color: #070614;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform .15s ease, filter .15s ease;
+}
+.fall-btn-ok:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.fall-btn-escalate {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 71, 105, 0.55);
+  background: rgba(255, 71, 105, 0.16);
+  color: #ff6b86;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.fall-btn-escalate:hover {
+  background: #ff4769;
+  color: #ffffff;
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 1180px) {
   .grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

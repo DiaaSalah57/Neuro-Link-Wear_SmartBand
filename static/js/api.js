@@ -154,6 +154,8 @@ export const api = {
   alertsSummary: () => request('/alerts/summary'),
   acknowledgeAlert: (id) => request(`/alerts/${id}/acknowledge`, { method: 'POST' }),
   resolveAlert: (id) => request(`/alerts/${id}/resolve`, { method: 'POST' }),
+  startFallCheck: () => request('/alerts/fall-check/start', { method: 'POST', body: {} }),
+  fallCheck: (id, action, reason = 'button') => request(`/alerts/${id}/fall-check`, { method: 'POST', body: { action, reason } }),
   sos: (note) => request('/alerts/sos', { method: 'POST', body: { note } }),
   // AI
   summaries: (limit = 10) => request('/ai/summaries', { query: { limit } }),

@@ -183,13 +183,35 @@ async def telemetry_ingest(body: IngestIn, request: Request):
 
 
 @router.post("/demo/trigger")
-def demo_trigger(kind: str = Query(...), user: dict = Depends(require_staff)):
-    """Demo controls: drive the simulator into a scripted scenario."""
+async def demo_trigger(kind: str = Query(...), user: dict = Depends(require_staff)):
+    """Demo controls: drive the simulator into a scripted scenario (and emit one immediate tick if simulator loop is off)."""
+    import os
     mapping = {"fall": "fall", "stress": "stress", "fever": "fever", "desat": "desat", "normal": "baseline", "walk": "walk"}
     if kind not in mapping:
         raise HTTPException(400, f"kind must be one of {list(mapping)}")
-    get_simulator().force_phase(mapping[kind], 28.0)
-    return {"ok": True, "phase": mapping[kind]}
+    sim = get_simulator()
+    sim.force_phase(mapping[kind], 28.0)
+
+    created_alerts = []
+    if os.environ.get("NEUROLINK_SIMULATOR", "0") != "1":
+        from .calibration import observe as cal_observe
+        from .detection import evaluate
+        reading = sim.next_reading()
+        with get_db() as db:
+            th = one(db.execute("SELECT * FROM thresholds WHERE patient_id=1")) or {}
+            patient = one(db.execute("SELECT * FROM patients WHERE id=1")) or {"name": "Abdelrahman", "age": 78}
+        cal = cal_observe(reading)
+        events = evaluate(reading, th, patient, cal)
+        for ev in events:
+            alert = sim.create_alert(ev, reading, created_by="drill")
+            if alert:
+                created_alerts.append(alert)
+        sim.persist(reading)
+        if sim.on_message:
+            await sim.on_message({"type": "telemetry", "data": reading})
+            for a in created_alerts:
+                await sim.on_message({"type": "alert", "data": a})
+    return {"ok": True, "phase": mapping[kind], "alerts": created_alerts}
 
 
 # ────────────────────────────────────────────────────────────── alerts ──────
@@ -278,6 +300,106 @@ def resolve_alert(alert_id: int, user: dict = Depends(require_staff)):
 
 class SosIn(BaseModel):
     note: str = "Emergency SOS button pressed from the dashboard"
+
+
+class FallCheckIn(BaseModel):
+    action: str = "ok"        # 'ok' (false alarm / I'm OK) | 'escalate' (no answer in 30s or confirmed critical)
+    reason: str = "button"    # 'button' | 'timeout'
+
+
+@router.post("/alerts/fall-check/start")
+async def start_fall_check(user: dict = Depends(require_staff)):
+    """Create or return an active Fall Detected alert to run the 30-second 'Are you OK?' verification."""
+    sim = get_simulator()
+    with get_db() as db:
+        existing = one(db.execute(
+            "SELECT * FROM alerts WHERE type='Fall Detected' AND status='active' ORDER BY id DESC LIMIT 1"
+        ))
+    if existing:
+        return existing
+    event = {
+        "type": "Fall Detected",
+        "severity": "critical",
+        "title": "Fall detected — awaiting 30s 'Are you OK?' verification",
+        "readings": {
+            "heart_rate": round(sim.hr, 1), "spo2": round(sim.spo2, 1),
+            "temperature": round(sim.temp, 2), "gsr": round(sim.gsr, 3),
+            "hrv": round(sim.hrv, 1), "accel_mag": 3.2, "gyro_mag": 2.9,
+            "activity": "Resting", "time": now_iso(),
+        },
+    }
+    alert = sim.create_alert(event, {"lat": sim.lat, "lng": sim.lng}, created_by=user["name"])
+    if alert and sim.on_message:
+        await sim.on_message({"type": "alert", "data": alert})
+    return alert
+
+
+@router.post("/alerts/{alert_id}/fall-check")
+async def resolve_or_escalate_fall_check(alert_id: int, body: FallCheckIn, user: dict = Depends(require_staff)):
+    """
+    Handle the 30-second 'Are you OK?' fall verification response:
+    - action='ok': wearer/caregiver pressed 'I'm OK' -> resolves alert as false alarm, cancels emergency.
+    - action='escalate': 30s countdown expired with no answer (or 'Call Help Now' pressed) -> confirms critical
+      emergency and auto-dispatches primary (P1) emergency contacts.
+    """
+    sim = get_simulator()
+    ts = now_iso()
+    with get_db() as db:
+        a = one(db.execute("SELECT * FROM alerts WHERE id=?", (alert_id,)))
+        if not a:
+            raise HTTPException(404, "Alert not found")
+
+        if body.action == "ok":
+            new_title = "Fall check-in: Confirmed OK (false alarm — escalation cancelled)"
+            db.execute(
+                """UPDATE alerts SET status='resolved', severity='low', title=?,
+                                     resolved_at=?, resolved_by=?, acknowledged_by=?
+                   WHERE id=?""",
+                (new_title, ts, user["name"], user["name"], alert_id),
+            )
+            updated = one(db.execute("SELECT * FROM alerts WHERE id=?", (alert_id,)))
+            dispatched = []
+            try:
+                mqtt_mod.publish_alert({"severity": "normal", "title": "Check-in OK", "recommendation": "Escalation cancelled"})
+            except Exception:
+                pass
+        else:
+            why = "no response in 30s" if body.reason == "timeout" else "confirmed emergency"
+            new_title = f"CRITICAL FALL EMERGENCY ({why}) — help called"
+            db.execute(
+                "UPDATE alerts SET status='active', severity='critical', title=? WHERE id=?",
+                (new_title, alert_id),
+            )
+            updated = one(db.execute("SELECT * FROM alerts WHERE id=?", (alert_id,)))
+            p1_contacts = rows(db.execute(
+                "SELECT * FROM contacts WHERE can_dispatch=1 AND priority=1 ORDER BY id ASC"
+            ))
+            if not p1_contacts:
+                p1_contacts = rows(db.execute(
+                    "SELECT * FROM contacts WHERE can_dispatch=1 ORDER BY priority ASC, id ASC LIMIT 2"
+                ))
+            dispatched = []
+            msg = (
+                f"EMERGENCY AUTO-DISPATCH: Fall detected for Abdelrahman ({why}). "
+                f"No 'I'm OK' confirmation received within 30 seconds. Immediate assistance required."
+            )
+            for c in p1_contacts:
+                cur = db.execute(
+                    "INSERT INTO dispatches(alert_id,contact_id,channel,status,message,sent_by,ts) VALUES(?,?,?,?,?,?,?)",
+                    (alert_id, c["id"], "call", "delivered", msg, f"auto-escalation ({user['name']})", ts),
+                )
+                dispatched.append(one(db.execute(
+                    """SELECT d.*, c.name as contact_name, c.relationship, c.phone FROM dispatches d
+                       JOIN contacts c ON c.id=d.contact_id WHERE d.id=?""", (cur.lastrowid,)
+                )))
+            try:
+                mqtt_mod.publish_alert({"severity": "danger", "title": "Fall Emergency", "recommendation": "Help called"})
+            except Exception:
+                pass
+
+    if sim.on_message:
+        await sim.on_message({"type": "alert_updated", "data": updated})
+    return {"ok": True, "action": body.action, "alert": updated, "dispatched": dispatched}
 
 
 @router.post("/alerts/sos")

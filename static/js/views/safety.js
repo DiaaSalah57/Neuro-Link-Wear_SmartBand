@@ -2,14 +2,14 @@
  * NeuroLink Wear — Safety & Emergency: live GPS map, incident timeline with
  * inactivity alerts, and one-click emergency contact dispatch.
  */
-import { api } from '../api.js?v=20260927-5';
-import { store } from '../store.js?v=20260927-5';
-import { onWS } from '../ws.js?v=20260927-5';
+import { api } from '../api.js?v=20261001-1';
+import { store } from '../store.js?v=20261001-1';
+import { onWS } from '../ws.js?v=20261001-1';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, fmtTime,
   emptyState, skeletonCards, typeIcon, confirmDialog,
-} from '../ui.js?v=20260927-5';
-import { createMap } from '../map.js?v=20260927-5';
+} from '../ui.js?v=20261001-1';
+import { createMap } from '../map.js?v=20261001-1';
 
 let unsubWS = null;
 let mapCtl = null;
@@ -145,7 +145,7 @@ async function refreshMap() {
 function openDispatchModal(alert) {
   api.contacts().then((contacts) => {
     const dispatchable = contacts.filter((c) => c.can_dispatch);
-    import('../ui.js?v=20260927-5').then(({ openModal, closeModal }) => {
+    import('../ui.js?v=20261001-1').then(({ openModal, closeModal }) => {
       openModal({
         title: 'Dispatch emergency contacts',
         wide: true,
@@ -313,6 +313,7 @@ export default {
                 <span class="badge neutral" id="contact-count">…</span>
               </div>
               <div class="divider"></div>
+              <button class="btn soft block" style="margin-bottom:8px" id="panel-fallcheck">${icons.activity} Fall Check-In ("Are you OK?" 30s)</button>
               <button class="btn danger block" id="panel-dispatch">${icons.phone} One-click dispatch</button>
               <button class="btn ghost block" style="margin-top:8px" id="panel-edit-contacts">${icons.users} Manage contacts</button>
             </div>
@@ -348,6 +349,7 @@ export default {
     $('#safety-refresh').onclick = () => { loadTimeline(); refreshMap(); loadDispatchLog(); };
     $('#safety-sos').onclick = () => window.dispatchEvent(new CustomEvent('nlw:sos'));
     $('#safety-dispatch-btn').onclick = () => openDispatchModal(null);
+    $('#panel-fallcheck').onclick = () => window.dispatchEvent(new CustomEvent('nlw:fallcheck'));
     $('#panel-dispatch').onclick = () => openDispatchModal(null);
     $('#panel-edit-contacts').onclick = () => { location.hash = '#/management?tab=contacts'; };
 

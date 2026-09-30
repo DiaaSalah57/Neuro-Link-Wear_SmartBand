@@ -2,7 +2,7 @@
  * NeuroLink Wear — WebSocket client with auto-reconnect, offline fallback,
  * and direct browser MQTT-over-WSS bridge when backend egress is restricted.
  */
-import { auth } from './api.js?v=20260927-5';
+import { auth } from './api.js?v=20261001-1';
 
 const listeners = new Set();
 let ws = null;
@@ -190,7 +190,7 @@ function startPollFallback() {
   if (pollTimer) return;
   pollTimer = setInterval(async () => {
     try {
-      const mod = await import('./api.js?v=20260927-5');
+      const mod = await import('./api.js?v=20261001-1');
       const latest = await mod.api.latest();
       if (latest && latest.device) ensureBrowserMqttBridge(latest.device);
       if (latest && latest.heart_rate !== undefined && latest.heart_rate !== null) {
