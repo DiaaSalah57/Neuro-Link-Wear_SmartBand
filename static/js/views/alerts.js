@@ -45,15 +45,18 @@ function alertCard(a) {
       </div>
 
       <div class="ai-explain">
-        <div class="ai-tag">${icons.robot} AI explanation</div>
+        <div class="ai-tag"><span style="display:inline-flex;width:15px;height:15px;flex:0 0 15px">${icons.robot}</span> <span>AI explanation</span></div>
         ${esc(a.explanation)}
       </div>
 
       ${recs.length ? `
       <div class="recommend-list">
-        <div class="ai-tag" style="color:var(--ok);margin-bottom:6px">${icons.shield} Recommended actions</div>
-        <ul style="list-style:disc;padding-left:18px">
-          ${recs.map((x) => `<li>${esc(x)}</li>`).join('')}
+        <div class="ai-tag" style="display:flex;align-items:center;gap:6px;color:var(--ok);margin-bottom:8px;font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase">
+          <span style="display:inline-flex;width:15px;height:15px;flex:0 0 15px">${icons.shield}</span>
+          <strong style="font-weight:800">Recommended actions</strong>
+        </div>
+        <ul style="list-style:disc;padding-left:18px;font-weight:600">
+          ${recs.map((x) => `<li style="font-weight:600">${esc(x)}</li>`).join('')}
         </ul>
       </div>` : ''}
 

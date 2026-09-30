@@ -189,15 +189,9 @@ async function boot() {
       updateBanner(msg.data.device);
     } else if (msg.type === 'connection') {
       const dot = $('#status-dot');
-      if (dot) {
-        if (msg.data.connected) {
-          dot.className = 'status-dot online';
-          $('#status-label').textContent = 'Device Online';
-          $('#status-sync').textContent = 'stream live';
-        } else {
-          dot.className = 'status-dot connecting';
-          $('#status-label').textContent = 'Reconnecting…';
-        }
+      if (dot && !msg.data.connected) {
+        dot.className = 'status-dot connecting';
+        $('#status-label').textContent = 'Reconnecting…';
       }
     } else if (msg.type === 'alert' && msg.data) {
       store.set('activeAlerts', (store.activeAlerts || 0) + 1);

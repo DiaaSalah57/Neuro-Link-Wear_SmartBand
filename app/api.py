@@ -100,9 +100,11 @@ def update_patient(body: PatientIn, user: dict = Depends(require_admin)):
 def telemetry_latest(user: dict = Depends(require_staff)):
     with get_db() as db:
         v = one(db.execute("SELECT * FROM vitals ORDER BY ts DESC, id DESC LIMIT 1"))
-        dev = one(db.execute("SELECT id,name,model,serial,firmware,battery,charging,online,status,mqtt_host,mqtt_port,mqtt_topic,mqtt_tls,protocol,last_seen FROM devices WHERE id=1"))
+        dev = one(db.execute("SELECT id,name,model,serial,firmware,battery,charging,online,status,mqtt_host,mqtt_port,mqtt_topic,mqtt_username,mqtt_password,mqtt_tls,protocol,last_seen FROM devices WHERE id=1"))
+    if dev:
+        dev["bridge_status"] = mqtt_mod.bridge_status().get("status", "stopped")
     if not v:
-        raise HTTPException(404, "No telemetry yet")
+        return {"device": dev, "waiting": True}
     v["device"] = dev
     return v
 
@@ -455,11 +457,11 @@ class DeviceIn(BaseModel):
     serial: str
     firmware: str = "2.4.1"
     status: str = "paired"
-    mqtt_host: str = "broker.hivemq.com"
-    mqtt_port: int = 1883
-    mqtt_topic: str = "neurolink/sensors"
-    mqtt_username: str = ""
-    mqtt_password: str = ""
+    mqtt_host: str = "831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud"
+    mqtt_port: int = 8883
+    mqtt_topic: str = "neurolink/sensors/data"
+    mqtt_username: str = "Neuro_link"
+    mqtt_password: str = "smartband"
     mqtt_tls: bool = True
     protocol: str = "mqtt"
     patient_id: int | None = 1
@@ -472,7 +474,7 @@ def list_devices(user: dict = Depends(require_staff)):
 
 
 @router.post("/devices")
-def create_device(body: DeviceIn, user: dict = Depends(require_admin)):
+async def create_device(body: DeviceIn, user: dict = Depends(require_admin)):
     with get_db() as db:
         if one(db.execute("SELECT id FROM devices WHERE serial=?", (body.serial,))):
             raise HTTPException(409, "A device with this serial already exists")
@@ -484,11 +486,26 @@ def create_device(body: DeviceIn, user: dict = Depends(require_admin)):
              body.mqtt_port, body.mqtt_topic, body.mqtt_username, body.mqtt_password,
              1 if body.mqtt_tls else 0, body.protocol, body.patient_id, now_iso()),
         )
-        return one(db.execute("SELECT * FROM devices WHERE id=?", (cur.lastrowid,)))
+        dev = one(db.execute("SELECT * FROM devices WHERE id=?", (cur.lastrowid,)))
+    if dev and dev.get("mqtt_host"):
+        import asyncio
+        async def _on_payload(payload, _src="mqtt"):
+            await process_device_payload(payload, source=_src)
+        mqtt_mod.start_bridge(
+            {
+                "host": dev["mqtt_host"], "port": dev["mqtt_port"] or 8883,
+                "username": dev["mqtt_username"] or "", "password": dev["mqtt_password"] or "",
+                "topic": dev["mqtt_topic"] or "neurolink/sensors/data",
+                "tls": bool(dev["mqtt_tls"]), "client_id": f"neurolink-bridge-{dev['serial']}",
+            },
+            _on_payload,
+            loop=asyncio.get_running_loop(),
+        )
+    return dev
 
 
 @router.put("/devices/{device_id}")
-def update_device(device_id: int, body: DeviceIn, user: dict = Depends(require_admin)):
+async def update_device(device_id: int, body: DeviceIn, user: dict = Depends(require_admin)):
     with get_db() as db:
         if not one(db.execute("SELECT id FROM devices WHERE id=?", (device_id,))):
             raise HTTPException(404, "Device not found")
@@ -500,7 +517,22 @@ def update_device(device_id: int, body: DeviceIn, user: dict = Depends(require_a
              body.mqtt_port, body.mqtt_topic, body.mqtt_username, body.mqtt_password,
              1 if body.mqtt_tls else 0, body.protocol, body.patient_id, device_id),
         )
-        return one(db.execute("SELECT * FROM devices WHERE id=?", (device_id,)))
+        dev = one(db.execute("SELECT * FROM devices WHERE id=?", (device_id,)))
+    if dev and dev.get("mqtt_host"):
+        import asyncio
+        async def _on_payload(payload, _src="mqtt"):
+            await process_device_payload(payload, source=_src)
+        mqtt_mod.start_bridge(
+            {
+                "host": dev["mqtt_host"], "port": dev["mqtt_port"] or 8883,
+                "username": dev["mqtt_username"] or "", "password": dev["mqtt_password"] or "",
+                "topic": dev["mqtt_topic"] or "neurolink/sensors/data",
+                "tls": bool(dev["mqtt_tls"]), "client_id": f"neurolink-bridge-{dev['serial']}",
+            },
+            _on_payload,
+            loop=asyncio.get_running_loop(),
+        )
+    return dev
 
 
 @router.delete("/devices/{device_id}")

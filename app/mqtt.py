@@ -191,10 +191,14 @@ def start_bridge(cfg: dict, on_payload, loop: asyncio.AbstractEventLoop | None =
         _bridge.update(status="unavailable", detail="paho-mqtt not installed")
         return False
 
+    # Stop any previous bridge instance before starting a new one
+    if _bridge.get("client") is not None:
+        stop_bridge()
+
     loop = loop or asyncio.get_event_loop()
     host = cfg.get("host") or ""
     port = int(cfg.get("port") or 8883)
-    topic = cfg.get("topic") or "neurolink/wear/telemetry"
+    topic = cfg.get("topic") or "neurolink/sensors/data"
 
     def _ctor():
         try:  # paho-mqtt ≥ 2.0
@@ -216,12 +220,13 @@ def start_bridge(cfg: dict, on_payload, loop: asyncio.AbstractEventLoop | None =
         # The paired-device topic AND the firmware's fixed telemetry topic
         # (Smart_band/smart_band.ino publishes to neurolink/sensors/data).
         topics: list[str] = []
-        for t in (topic, "neurolink/sensors/data"):
+        for t in (topic, "neurolink/sensors/data", "neurolink/wear/+/telemetry"):
             if t and t not in topics:
                 topics.append(t)
         _bridge.update(status="connected", detail=f"subscribed to {', '.join(topics)}")
         for t in topics:
             client.subscribe(t, qos=1)
+        print(f"[NeuroLink Wear] MQTT bridge connected to {host}:{port} — subscribed to {', '.join(topics)}")
 
     def _on_disconnect(*args):
         if _bridge["status"] != "stopped":
@@ -232,6 +237,7 @@ def start_bridge(cfg: dict, on_payload, loop: asyncio.AbstractEventLoop | None =
             payload = json.loads(msg.payload.decode("utf-8"))
         except Exception:
             payload = {"raw": msg.payload.decode("utf-8", "replace")}
+        print(f"[NeuroLink Wear] MQTT message on {msg.topic}: {payload}")
         if loop and loop.is_running():
             asyncio.run_coroutine_threadsafe(on_payload(payload), loop)
 

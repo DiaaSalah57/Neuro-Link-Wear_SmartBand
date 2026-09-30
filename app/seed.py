@@ -30,7 +30,11 @@ HOME_LAT, HOME_LNG = 30.028018, 31.201973  # Creativa Innovation Hub - Giza, 26H
 FALL_LAT, FALL_LNG = 30.026438, 31.204363
 
 
+import os
+
+
 def seed_all() -> None:
+    seed_demo = os.environ.get("NEUROLINK_SEED_DEMO", "0") == "1"
     with get_db() as db:
         if one(db.execute("SELECT id FROM users LIMIT 1")):
             return  # already seeded
@@ -39,12 +43,14 @@ def seed_all() -> None:
         _seed_device(db)
         _seed_contacts(db)
         _seed_thresholds(db)
-        _seed_vitals(db)
-        _seed_alerts(db)
-        _seed_summaries(db)
-        _seed_activity(db)
-        _seed_locations(db)
-    _seed_calibration()
+        if seed_demo:
+            _seed_vitals(db)
+            _seed_alerts(db)
+            _seed_summaries(db)
+            _seed_activity(db)
+            _seed_locations(db)
+    if seed_demo:
+        _seed_calibration()
 
 
 # ── Users ────────────────────────────────────────────────────────────────────
@@ -83,6 +89,7 @@ def _seed_patient(db) -> None:
 # ── Device ───────────────────────────────────────────────────────────────────
 def _seed_device(db) -> None:
     t = iso(now())
+    seed_demo = os.environ.get("NEUROLINK_SEED_DEMO", "0") == "1"
     db.execute(
         """INSERT INTO devices(name,model,serial,firmware,battery,charging,status,online,
                                mqtt_host,mqtt_port,mqtt_topic,mqtt_username,mqtt_password,mqtt_tls,
@@ -90,25 +97,26 @@ def _seed_device(db) -> None:
            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             "Margaret's NeuroLink Band", "NeuroLink Band NL-200", "NLW-8842-A", "2.4.1",
-            87, 0, "paired", 1,
+            100, 0, "paired", 1 if seed_demo else 0,
             "831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud", 8883,
-            "neurolink/wear/NLW-8842-A/telemetry", "Neuro_link", "smartband", 1,
-            "mqtt", t, 1, t,
+            "neurolink/sensors/data", "Neuro_link", "smartband", 1,
+            "mqtt", t if seed_demo else None, 1, t,
         ),
     )
-    db.execute(
-        """INSERT INTO devices(name,model,serial,firmware,battery,charging,status,online,
-                               mqtt_host,mqtt_port,mqtt_topic,mqtt_username,mqtt_password,mqtt_tls,
-                               protocol,last_seen,patient_id,created_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (
-            "Bedside Gateway (backup)", "NeuroLink Hub NH-100", "NLH-2210-C", "1.9.0",
-            100, 1, "paired", 0,
-            "831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud", 8883,
-            "neurolink/wear/NLH-2210-C/gateway", "Neuro_link", "smartband", 1,
-            "mqtt", iso(now() - timedelta(hours=26)), 1, t,
-        ),
-    )
+    if seed_demo:
+        db.execute(
+            """INSERT INTO devices(name,model,serial,firmware,battery,charging,status,online,
+                                   mqtt_host,mqtt_port,mqtt_topic,mqtt_username,mqtt_password,mqtt_tls,
+                                   protocol,last_seen,patient_id,created_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                "Bedside Gateway (backup)", "NeuroLink Hub NH-100", "NLH-2210-C", "1.9.0",
+                100, 1, "paired", 0,
+                "831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud", 8883,
+                "neurolink/wear/NLH-2210-C/gateway", "Neuro_link", "smartband", 1,
+                "mqtt", iso(now() - timedelta(hours=26)), 1, t,
+            ),
+        )
 
 
 # ── Contacts ─────────────────────────────────────────────────────────────────

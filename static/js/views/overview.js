@@ -65,7 +65,7 @@ function feedRow(item) {
 }
 
 function updateLive(reading) {
-  if (!reading) return;
+  if (!reading || reading.heart_rate === undefined || reading.heart_rate === null) return;
   VITALS.forEach((cfg) => {
     const v = reading[cfg.key];
     const valEl = $(`[data-v="${cfg.key}"]`);
@@ -287,7 +287,7 @@ export default {
       <div class="flex-between"><span class="muted">Battery</span><b class="mono">${dev.battery}%${dev.charging ? ' ⚡' : ''}</b></div>
       <div class="meter" style="margin:6px 0 12px"><i style="width:${dev.battery}%;background:${dev.battery < 20 ? 'var(--danger)' : 'var(--ok)'}"></i></div>
       <div class="flex-between"><span class="muted">Last sync</span><b>${fmtRelative(dev.last_seen)}</b></div>
-      <div class="flex-between" style="margin-top:6px"><span class="muted">MQTT topic</span><b class="mono" style="font-size:11px">${esc(dev.mqtt_topic || 'neurolink/sensors')}</b></div>
+      <div class="flex-between" style="margin-top:6px"><span class="muted">MQTT topic</span><b class="mono" style="font-size:11px">${esc(dev.mqtt_topic || 'neurolink/sensors/data')}</b></div>
     ` : emptyState({ icon: icons.watch, title: 'No device paired', body: 'Pair a NeuroLink band in Care Team → Devices.' });
 
     // AI insight
@@ -310,7 +310,13 @@ export default {
     // ── events ──────────────────────────────────────────────────────────
     $('#ov-refresh').onclick = async () => {
       const r = await api.latest().catch(() => null);
-      if (r) { store.pushSpark(r); updateLive(r); toast('info', 'Telemetry refreshed', `Latest reading at ${fmtTime(r.ts)}`); }
+      if (r && r.heart_rate !== undefined && r.heart_rate !== null) {
+        store.pushSpark(r);
+        updateLive(r);
+        toast('info', 'Telemetry refreshed', `Latest reading at ${fmtTime(r.ts)}`);
+      } else {
+        toast('info', 'Waiting for broker data', 'No readings received from the MQTT broker yet.');
+      }
     };
     $('#ov-ai').onclick = async (e) => {
       const btn = e.currentTarget;

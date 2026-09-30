@@ -160,13 +160,13 @@ function deviceModal(existing = null) {
             <option value="http" ${existing?.protocol === 'http' ? 'selected' : ''}>HTTPS webhook</option>
           </select></label>
         <label class="field"><span>Broker host</span>
-          <input id="d-host" value="${esc(existing?.mqtt_host || 'broker.hivemq.com')}"></label>
+          <input id="d-host" value="${esc(existing?.mqtt_host || '831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud')}"></label>
         <label class="field"><span>Broker port</span>
-          <input id="d-port" type="number" value="${existing?.mqtt_port || 1883}"></label>
+          <input id="d-port" type="number" value="${existing?.mqtt_port || 8883}"></label>
         <label class="field"><span>Topic</span>
-          <input id="d-topic" value="${esc(existing?.mqtt_topic || 'neurolink/sensors')}"></label>
+          <input id="d-topic" value="${esc(existing?.mqtt_topic || 'neurolink/sensors/data')}"></label>
         <label class="field"><span>Username</span>
-          <input id="d-user" value="${esc(existing?.mqtt_username || '')}" placeholder="optional"></label>
+          <input id="d-user" value="${esc(existing?.mqtt_username || 'Neuro_link')}" placeholder="optional"></label>
         <label class="field"><span>Password</span>
           <input id="d-pass" type="password" value="${existing?.mqtt_password ? '••••••••' : ''}" placeholder="optional"></label>
         <label class="field full">

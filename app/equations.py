@@ -114,8 +114,8 @@ def stress_index(gsr: float, hrv: float, hr: float, cal: dict, activity: str = "
 
     _, phasic = eda_split(gsr, tonic)
     z_gsr = robust_z(phasic, 0.0, max(gsr_mad, 0.25))       # ≥0.25µS noise floor
-    z_hrv = robust_z(hrv_rest - hrv, 0.0, max(hrv_rest * 0.25, 8.0))
-    z_hr = robust_z(hr - hr_rest, 0.0, max(hr_rest * 0.20, 12.0))
+    z_hrv = robust_z(hrv_rest - hrv, 0.0, max(hrv_rest * 0.25, 8.0)) if hrv > 0 else 0.0
+    z_hr = robust_z(hr - hr_rest, 0.0, max(hr_rest * 0.20, 12.0)) if hr > 0 else 0.0
     resting = activity in ("Resting", "Sleeping", "")
 
     terms = {
@@ -130,8 +130,11 @@ def stress_index(gsr: float, hrv: float, hr: float, cal: dict, activity: str = "
 
     # legacy population-bounded score (pipeline.py parity)
     gsr_part = (gsr - 0.10) / (19.93 - 0.10 + 1e-6)
-    hrv_part = 1 - (hrv - 13.60) / (89.96 - 13.60 + 1e-6)
-    legacy = clamp((gsr_part + hrv_part) / 2)
+    if hrv > 0:
+        hrv_part = 1 - (hrv - 13.60) / (89.96 - 13.60 + 1e-6)
+        legacy = clamp((gsr_part + hrv_part) / 2)
+    else:
+        legacy = clamp(gsr_part)
 
     z_max = round(max(z_gsr, z_hrv, z_hr if resting else z_gsr), 2)
     return {

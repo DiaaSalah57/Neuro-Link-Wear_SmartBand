@@ -178,7 +178,7 @@ export default {
         renderActivity(),
       ]);
       const grid = $('#kpi-grid');
-      if (grid && stats && stats.window_24h) {
+      if (grid && stats && stats.window_24h && stats.window_24h.n > 0) {
         const w = stats.window_24h;
         const d = stats.delta_vs_prev || {};
         grid.innerHTML = [
