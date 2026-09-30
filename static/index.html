@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/styles.css?v=20261001-2">
+  <link rel="stylesheet" href="/static/css/styles.css?v=20261001-3">
   <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
 </head>
 <body>
@@ -53,7 +53,11 @@
           <button type="submit" class="btn primary block lg-btn" id="login-submit">Sign in</button>
         </form>
         <div class="demo-accounts">
-          <p class="muted">Demo accounts — one click to fill</p>
+          <p class="muted">Quick sign-in accounts — one click to fill</p>
+          <button class="demo-chip" data-email="abdelrahman@neurolink.health" data-pw="abdelrahman123">
+            <span class="avatar sm" style="background:#0d9488">AB</span>
+            <span><strong>Abdelrahman</strong><small>abdelrahman@neurolink.health · abdelrahman123</small></span>
+          </button>
           <button class="demo-chip" data-email="caregiver@neurolink.health" data-pw="caregiver123">
             <span class="avatar sm" style="background:#241483">MK</span>
             <span><strong>Malak (Caregiver)</strong><small>caregiver@neurolink.health</small></span>
@@ -169,6 +173,6 @@
   <div id="toast-root" class="toast-root" aria-live="polite"></div>
   <div id="modal-root" class="modal-root hidden"></div>
 
-  <script type="module" src="/static/js/app.js?v=20261001-2"></script>
+  <script type="module" src="/static/js/app.js?v=20261001-3"></script>
 </body>
 </html>

@@ -79,10 +79,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   globalThis.CustomEvent = window.CustomEvent;
   globalThis.HTMLElement = window.HTMLElement;
 
-  const loginMod = await import('./static/js/views/login.js?v=20261001-2');
-  const mgmtMod = await import('./static/js/views/management.js?v=20261001-2');
-  const alertsMod = await import('./static/js/views/alerts.js?v=20261001-2');
-  const { api, auth } = await import('./static/js/api.js?v=20261001-2');
+  const loginMod = await import('./static/js/views/login.js?v=20261001-3');
+  const mgmtMod = await import('./static/js/views/management.js?v=20261001-3');
+  const alertsMod = await import('./static/js/views/alerts.js?v=20261001-3');
+  const { api, auth } = await import('./static/js/api.js?v=20261001-3');
 
   loginMod.default.render();
 
@@ -111,14 +111,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await sleep(150);
 
   const calText = viewRoot.textContent;
-  check('7. Calibration tab title renders', calText.includes('Calibration — personalised equation baselines'));
+  check('7. Calibration tab title renders', calText.includes('Calibration — personalised'));
   check('8. Auto-fit button present', Boolean(viewRoot.querySelector('#cal-autofit')));
   const baseInputs = viewRoot.querySelectorAll('[data-cal-base]');
   check('9. All 8 personal baseline inputs rendered', baseInputs.length === 8, `count=${baseInputs.length}`);
   check('10. Baseline source badges rendered', viewRoot.querySelectorAll('.field .badge').length >= 8);
   check('11. Tier 1 clinical floors panel rendered', calText.includes('Tier 1 · clinical floors') && calText.includes('Never personalised'));
   check('12. Tier 2 personal σ-rules panel rendered', calText.includes('Tier 2 · personal σ-rules') && Boolean(viewRoot.querySelector('#cal-z-slider')));
-  check('13. Live equation breakdown panel rendered', calText.includes('Live equations on the latest reading') && calText.includes('Core-equivalent temperature'));
+  check('13. Guided reference measurements panel rendered', calText.includes('Guided reference measurements') && Boolean(viewRoot.querySelector('#cal-ref-add')));
 
   // 14. Auto-fit interaction
   await viewRoot.querySelector('#cal-autofit').onclick();

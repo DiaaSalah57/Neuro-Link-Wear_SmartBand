@@ -37,6 +37,12 @@ def seed_all() -> None:
     seed_demo = os.environ.get("NEUROLINK_SEED_DEMO", "0") == "1"
     with get_db() as db:
         if one(db.execute("SELECT id FROM users LIMIT 1")):
+            # Ensure Abdelrahman login account exists even on already-seeded DBs
+            if not one(db.execute("SELECT id FROM users WHERE email=?", ("abdelrahman@neurolink.health",))):
+                db.execute(
+                    "INSERT INTO users(email,password_hash,name,role,phone,created_at) VALUES(?,?,?,?,?,?)",
+                    ("abdelrahman@neurolink.health", hash_password("abdelrahman123"), "Abdelrahman", "caregiver", "+20 100 555 0111", iso(now())),
+                )
             return  # already seeded
         _seed_users(db)
         _seed_patient(db)
@@ -58,6 +64,7 @@ def _seed_users(db) -> None:
     t = iso(now())
     users = [
         ("admin@neurolink.health", "admin123", "Diaa", "admin", "+20 100 555 0100"),
+        ("abdelrahman@neurolink.health", "abdelrahman123", "Abdelrahman", "caregiver", "+20 100 555 0111"),
         ("caregiver@neurolink.health", "caregiver123", "Malak", "caregiver", "+20 100 555 0142"),
         ("aly@neurolink.health", "caregiver123", "Aly", "caregiver", "+20 100 555 0177"),
         ("esraa@neurolink.health", "caregiver123", "Esraa", "caregiver", "+20 100 555 0166"),
