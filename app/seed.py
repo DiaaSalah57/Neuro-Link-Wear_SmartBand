@@ -39,12 +39,13 @@ def seed_all() -> None:
         _seed_device(db)
         _seed_contacts(db)
         _seed_thresholds(db)
-        _seed_vitals(db)
-        _seed_alerts(db)
-        _seed_summaries(db)
-        _seed_activity(db)
-        _seed_locations(db)
-    _seed_calibration()
+        # Disable demo data seeding:
+        # _seed_vitals(db)
+        # _seed_alerts(db)
+        # _seed_summaries(db)
+        # _seed_activity(db)
+        # _seed_locations(db)
+        _seed_calibration()
 
 
 # ── Users ────────────────────────────────────────────────────────────────────

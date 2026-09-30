@@ -106,10 +106,15 @@ async def lifespan(app: FastAPI):
         db.execute("DELETE FROM location_history WHERE ts<?", (cutoff,))
 
     sim = get_simulator(on_message=on_simulator_message)
-    task = asyncio.create_task(sim.run())
-    print("[NeuroLink Wear] API + dashboard ready — simulator streaming.")
+    task = None
+    if os.environ.get("NEUROLINK_SIMULATOR", "0") == "1":
+        task = asyncio.create_task(sim.run())
+        print("[NeuroLink Wear] API + dashboard ready — simulator streaming.")
+    else:
+        print("[NeuroLink Wear] API + dashboard ready — live MQTT broker mode only.")
     yield
-    task.cancel()
+    if task:
+        task.cancel()
 
 
 app = FastAPI(
