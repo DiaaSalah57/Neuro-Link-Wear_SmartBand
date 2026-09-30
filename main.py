@@ -11,9 +11,9 @@ from fastapi.responses import HTMLResponse
 from pipeline import process_reading
 
 # ── Config ────────────────────────────────────────────────────────────────────
-MQTT_BROKER = "localhost"   # change to HiveMQ host if using cloud broker
-MQTT_PORT   = 1883
-MQTT_TOPIC  = "neurolink/sensors"
+MQTT_BROKER = "831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud"   # change to HiveMQ host if using cloud broker
+MQTT_PORT   = 8883
+MQTT_TOPIC  = "neurolink/sensors/data"
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title="NeuroLink Wear API")
