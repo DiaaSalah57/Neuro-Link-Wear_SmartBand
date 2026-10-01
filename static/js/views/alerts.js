@@ -2,12 +2,12 @@
  * NeuroLink Wear — AI Insights & Alerts: anomaly alerts with severity badges,
  * LLM plain-language explanations, recommendations, plus the AI summary feed.
  */
-import { api } from '../api.js?v=20261001-7';
-import { onWS } from '../ws.js?v=20261001-7';
+import { api } from '../api.js?v=20261001-4';
+import { onWS } from '../ws.js?v=20261001-4';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, emptyState,
   typeIcon, skeletonCards, confirmDialog,
-} from '../ui.js?v=20261001-7';
+} from '../ui.js?v=20261001-4';
 
 let unsubWS = null;
 let state = { status: 'all', severity: 'all', type: 'all' };
@@ -44,7 +44,7 @@ function alertCard(a) {
       <div class="alert-head">
         <div>
           <div class="row" style="gap:8px">
-            <span class="vital-icon" style="width:32px;height:32px;font-size:calc(15px * var(--fs));background:${isTier3 ? 'var(--accent-soft)' : 'var(--danger-soft)'};color:${isTier3 ? 'var(--accent)' : 'var(--danger)'}">${isTier3 ? icons.robot : typeIcon(a.type)}</span>
+            <span class="vital-icon" style="width:32px;height:32px;font-size:15px;background:${isTier3 ? 'var(--accent-soft)' : 'var(--danger-soft)'};color:${isTier3 ? 'var(--accent)' : 'var(--danger)'}">${isTier3 ? icons.robot : typeIcon(a.type)}</span>
             <h4>${esc(a.title)}</h4>
           </div>
           <div class="alert-meta">
@@ -66,7 +66,7 @@ function alertCard(a) {
 
       ${recs.length ? `
       <div class="recommend-list">
-        <div class="ai-tag" style="display:flex;align-items:center;gap:6px;color:var(--ok);margin-bottom:8px;font-weight:800;font-size:calc(13px * var(--fs));letter-spacing:.06em;text-transform:uppercase">
+        <div class="ai-tag" style="display:flex;align-items:center;gap:6px;color:var(--ok);margin-bottom:8px;font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase">
           <span style="display:inline-flex;width:15px;height:15px;flex:0 0 15px">${icons.shield}</span>
           <strong style="font-weight:800">Recommended actions</strong>
         </div>
@@ -92,7 +92,7 @@ function alertCard(a) {
         ${a.status !== 'resolved' ? `<button class="btn primary sm" data-act="resolve">${icons.check} Mark resolved</button>` : ''}
         <button class="btn ghost sm" data-act="dispatch">${icons.phone} Dispatch contacts</button>
         ${a.lat ? `<button class="btn ghost sm" data-act="map">${icons.pin} View on map</button>` : ''}
-        ${a.status === 'resolved' && a.resolved_by ? `<span class="muted" style="font-size:calc(11.5px * var(--fs));align-self:center">resolved by ${esc(a.resolved_by)} · ${fmtRelative(a.resolved_at)}</span>` : ''}
+        ${a.status === 'resolved' && a.resolved_by ? `<span class="muted" style="font-size:11.5px;align-self:center">resolved by ${esc(a.resolved_by)} · ${fmtRelative(a.resolved_at)}</span>` : ''}
       </div>
     </div>
   </div>`;
@@ -108,11 +108,11 @@ function summaryCard(s) {
         </div>
         <div style="flex:1;min-width:0">
           <div class="flex-between">
-            <strong style="font-size:calc(13.6px * var(--fs))">${esc(s.title)}</strong>
+            <strong style="font-size:13.6px">${esc(s.title)}</strong>
             <span class="badge ${s.period === 'weekly' ? 'purple' : s.period === 'event' ? 'high' : 'neutral'}">${esc(s.period)}</span>
           </div>
           <small class="muted">${fmtDateTime(s.ts)}</small>
-          <p style="font-size:calc(12.8px * var(--fs));line-height:1.65;color:var(--text-2);margin-top:8px">${esc(s.body)}</p>
+          <p style="font-size:12.8px;line-height:1.65;color:var(--text-2);margin-top:8px">${esc(s.body)}</p>
           <div>${(s.tags || []).map((t) => `<span class="tag-pill">${esc(t)}</span>`).join('')}</div>
         </div>
       </div>
@@ -231,7 +231,7 @@ export default {
           <div class="stack">
             <div class="card">
               <div class="card-head"><h3>${icons.robot} How NeuroLink AI works</h3></div>
-              <div class="card-body" style="font-size:calc(12.8px * var(--fs));line-height:1.7;color:var(--text-2)">
+              <div class="card-body" style="font-size:12.8px;line-height:1.7;color:var(--text-2)">
                 <p><b>1 · Detect.</b> An ensemble of threshold rules, an Isolation Forest and an LSTM autoencoder watch every reading for anomalies in stress, temperature, oxygen and motion.</p>
                 <p style="margin-top:8px"><b>2 · Explain.</b> Each detection is turned into a plain-language explanation referencing the exact sensor values — no jargon.</p>
                 <p style="margin-top:8px"><b>3 · Advise.</b> Actionable recommendations are attached to every incident, and daily summaries track the bigger picture.</p>

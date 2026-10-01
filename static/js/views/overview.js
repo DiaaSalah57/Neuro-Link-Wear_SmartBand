@@ -2,14 +2,14 @@
  * NeuroLink Wear — Live Overview: realtime vitals, IMU motion, live feed,
  * device health and AI insight cards.
  */
-import { api } from '../api.js?v=20261001-7';
-import { store } from '../store.js?v=20261001-7';
-import { onWS } from '../ws.js?v=20261001-7';
+import { api } from '../api.js?v=20261001-4';
+import { store } from '../store.js?v=20261001-4';
+import { onWS } from '../ws.js?v=20261001-4';
 import {
   $, $$, esc, icons, toast, fmtTime, fmtRelative, fmtDateTime, fmtNum,
   skeletonCards, emptyState, typeIcon,
-} from '../ui.js?v=20261001-7';
-import { sparkline } from '../charts.js?v=20261001-7';
+} from '../ui.js?v=20261001-4';
+import { sparkline } from '../charts.js?v=20261001-4';
 
 let unsubWS = null;
 let unsubStore = null;
@@ -55,7 +55,7 @@ function feedRow(item) {
     <div class="feed-item">
       <div class="feed-dot ${sevClass}"></div>
       <div class="feed-content">
-        <strong style="font-size:calc(13px * var(--fs))">${esc(item.title)}</strong>
+        <strong style="font-size:13px">${esc(item.title)}</strong>
         <div class="meta">
           <span>${fmtRelative(item.ts)}</span>
           ${item.badge ? `<span class="badge ${item.severity || 'neutral'}">${esc(item.badge)}</span>` : ''}
@@ -204,7 +204,7 @@ export default {
                   <div class="meter"><i style="width:62%"></i></div>
                 </div>
               </div>
-              <div class="muted" style="font-size:calc(12px * var(--fs))">
+              <div class="muted" style="font-size:12px">
                 Fall-detection threshold: impact ≥ 2.8 g with rotation ≥ 2.4 rad/s — the band auto-escalates on match.
               </div>
             </div>
@@ -249,7 +249,7 @@ export default {
               <button class="btn primary block" id="qa-dispatch">${icons.phone}<span>Dispatch emergency contacts</span></button>
               <button class="btn ghost block" id="qa-safety">${icons.map}<span>Open safety &amp; live map</span></button>
               <div class="divider"></div>
-              <div class="muted" style="font-size:calc(11.5px * var(--fs));font-weight:600;letter-spacing:.05em;text-transform:uppercase">Demo scenario controls</div>
+              <div class="muted" style="font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Demo scenario controls</div>
               <div class="chip-row">
                 <button class="chip" data-demo="fall">Simulate fall</button>
                 <button class="chip" data-demo="stress">Stress spike</button>
@@ -304,11 +304,11 @@ export default {
           <span>${Math.round((s.score || 0.8) * 100)}</span>
         </div>
         <div>
-          <strong style="display:block;font-size:calc(13.5px * var(--fs))">${esc(s.title)}</strong>
+          <strong style="display:block;font-size:13.5px">${esc(s.title)}</strong>
           <small class="muted">${fmtDateTime(s.ts)} · wellbeing score</small>
         </div>
       </div>
-      <p style="font-size:calc(12.8px * var(--fs));line-height:1.65;color:var(--text-2)">${esc(s.body.length > 330 ? s.body.slice(0, 330) + '…' : s.body)}</p>
+      <p style="font-size:12.8px;line-height:1.65;color:var(--text-2)">${esc(s.body.length > 330 ? s.body.slice(0, 330) + '…' : s.body)}</p>
       <div>${(s.tags || []).map((t) => `<span class="tag-pill">${esc(t)}</span>`).join('')}</div>
       <button class="btn ghost sm" id="ai-more" style="margin-top:10px">${icons.robot} Read full analysis</button>
     ` : emptyState({ icon: icons.robot, title: 'No AI summaries yet', body: 'Generate one from the button above.' });
@@ -333,9 +333,9 @@ export default {
         $('#ai-insight-body').innerHTML = `
           <div class="row" style="align-items:center;margin-bottom:10px">
             <div class="summary-score" style="--score:${Math.round((s2.score || 0.8) * 100)}"><span>${Math.round((s2.score || 0.8) * 100)}</span></div>
-            <div><strong style="display:block;font-size:calc(13.5px * var(--fs))">${esc(s2.title)}</strong><small class="muted">just now · wellbeing score</small></div>
+            <div><strong style="display:block;font-size:13.5px">${esc(s2.title)}</strong><small class="muted">just now · wellbeing score</small></div>
           </div>
-          <p style="font-size:calc(12.8px * var(--fs));line-height:1.65;color:var(--text-2)">${esc(s2.body)}</p>
+          <p style="font-size:12.8px;line-height:1.65;color:var(--text-2)">${esc(s2.body)}</p>
           <div>${(s2.tags || []).map((t) => `<span class="tag-pill">${esc(t)}</span>`).join('')}</div>`;
       } catch (err) {
         toast('error', 'Could not generate summary', err.message);
@@ -386,7 +386,7 @@ export default {
           <div class="notif-banner danger" style="margin-bottom:16px">
             <div class="nb-body">
               <strong>${active} active alert${active > 1 ? 's' : ''} need${active > 1 ? '' : 's'} attention</strong>
-              <div class="muted" style="font-size:calc(12.5px * var(--fs))">Open AI Alerts to review explanations and take action.</div>
+              <div class="muted" style="font-size:12.5px">Open AI Alerts to review explanations and take action.</div>
             </div>
             <button class="btn danger sm" onclick="location.hash='#/alerts'">Review</button>
           </div>`;
