@@ -4,11 +4,11 @@
  * personalized health thresholds, patient profile, (admin) team users
  * and the calibration lab (equation-based AI baselines).
  */
-import { api, auth } from '../api.js?v=20260927-5';
+import { api, auth } from '../api.js?v=20261001-4';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, confirmDialog,
   emptyState, skeletonLines, fmtRelative,
-} from '../ui.js?v=20260927-5';
+} from '../ui.js?v=20261001-4';
 
 let activeTab = 'contacts';
 const isAdmin = () => auth.user && auth.user.role === 'admin';
@@ -135,51 +135,23 @@ async function renderContacts(box) {
 /* ─────────────────────────────────── Devices ────────────────────────── */
 function deviceModal(existing = null) {
   openModal({
-    title: existing ? 'Edit device & broker config' : 'Pair a new wearable',
+    title: existing ? 'Edit wearable device' : 'Pair a new wearable',
     wide: true,
     body: `
       <div class="form-grid">
         <label class="field"><span>Device name</span>
-          <input id="d-name" value="${esc(existing?.name || '')}" placeholder="Margaret's NeuroLink Band"></label>
+          <input id="d-name" value="${esc(existing?.name || '')}" placeholder="Abdelrahman's NeuroLink Band"></label>
         <label class="field"><span>Model</span>
           <input id="d-model" value="${esc(existing?.model || 'NeuroLink Band NL-200')}"></label>
         <label class="field"><span>Serial number</span>
           <input id="d-serial" value="${esc(existing?.serial || '')}" placeholder="NLW-0000-X"></label>
         <label class="field"><span>Firmware</span>
           <input id="d-fw" value="${esc(existing?.firmware || '2.4.1')}"></label>
-      </div>
-      <div class="divider"></div>
-      <div class="row" style="margin-bottom:10px">
-        <strong style="font-size:13px">${icons.wifi} MQTT / Broker pairing</strong>
-        <span class="badge neutral">protocol</span>
-      </div>
-      <div class="form-grid">
-        <label class="field"><span>Protocol</span>
-          <select id="d-proto">
-            <option value="mqtt" ${existing?.protocol !== 'http' ? 'selected' : ''}>MQTT</option>
-            <option value="http" ${existing?.protocol === 'http' ? 'selected' : ''}>HTTPS webhook</option>
-          </select></label>
-        <label class="field"><span>Broker host</span>
-          <input id="d-host" value="${esc(existing?.mqtt_host || 'broker.hivemq.com')}"></label>
-        <label class="field"><span>Broker port</span>
-          <input id="d-port" type="number" value="${existing?.mqtt_port || 1883}"></label>
-        <label class="field"><span>Topic</span>
-          <input id="d-topic" value="${esc(existing?.mqtt_topic || 'neurolink/sensors')}"></label>
-        <label class="field"><span>Username</span>
-          <input id="d-user" value="${esc(existing?.mqtt_username || '')}" placeholder="optional"></label>
-        <label class="field"><span>Password</span>
-          <input id="d-pass" type="password" value="${existing?.mqtt_password ? '••••••••' : ''}" placeholder="optional"></label>
-        <label class="field full">
-          <span style="display:flex;align-items:center;gap:8px">
-            <input type="checkbox" id="d-tls" ${existing?.mqtt_tls !== 0 ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--accent)">
-            Use TLS encryption for the broker connection
-          </span>
-        </label>
       </div>`,
     footer: `
       ${existing ? '<button class="btn ghost" id="d-test">' + icons.wifi + ' Test connection</button>' : ''}
       <button class="btn ghost" data-modal-close>Cancel</button>
-      <button class="btn primary" id="d-save">${existing ? 'Save configuration' : 'Pair device'}</button>`,
+      <button class="btn primary" id="d-save">${existing ? 'Save device' : 'Pair device'}</button>`,
   });
   const testBtn = $('#d-test');
   if (testBtn) {
@@ -188,8 +160,8 @@ function deviceModal(existing = null) {
       testBtn.innerHTML = `${icons.refresh} Testing…`;
       try {
         const res = await api.testDevice(existing.id);
-        if (res.ok) toast('success', 'Broker reachable', res.message);
-        else toast('error', `Broker test failed (${res.stage || 'unknown'})`, res.message);
+        if (res.ok) toast('success', 'Device reachable', 'Connection verified.');
+        else toast('error', 'Connection test failed', 'Could not reach the wearable stream.');
       } catch (err) {
         toast('error', 'Connection test failed', err.message);
       } finally {
@@ -205,13 +177,13 @@ function deviceModal(existing = null) {
       serial: $('#d-serial').value.trim(),
       firmware: $('#d-fw').value.trim(),
       status: 'paired',
-      protocol: $('#d-proto').value,
-      mqtt_host: $('#d-host').value.trim(),
-      mqtt_port: +$('#d-port').value || 1883,
-      mqtt_topic: $('#d-topic').value.trim(),
-      mqtt_username: $('#d-user').value.trim(),
-      mqtt_password: $('#d-pass').value === '••••••••' ? (existing?.mqtt_password || '') : $('#d-pass').value,
-      mqtt_tls: $('#d-tls').checked,
+      protocol: existing?.protocol || 'mqtt',
+      mqtt_host: existing?.mqtt_host || '831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud',
+      mqtt_port: existing?.mqtt_port || 8883,
+      mqtt_topic: existing?.mqtt_topic || 'neurolink/sensors/data',
+      mqtt_username: existing?.mqtt_username || 'Neuro_link',
+      mqtt_password: existing?.mqtt_password || 'smartband',
+      mqtt_tls: existing?.mqtt_tls !== undefined ? Boolean(existing.mqtt_tls) : true,
       patient_id: 1,
     };
     if (!body.name || !body.serial) { toast('warning', 'Name and serial are required'); return; }
@@ -220,7 +192,7 @@ function deviceModal(existing = null) {
       if (existing) await api.updateDevice(existing.id, body);
       else await api.createDevice(body);
       closeModal();
-      toast('success', existing ? 'Device configuration saved' : 'Device paired', `${body.name} is linked to Margaret's profile.`);
+      toast('success', existing ? 'Device saved' : 'Device paired', `${body.name} is linked to Abdelrahman's profile.`);
       renderTab();
     } catch (err) {
       toast('error', 'Save failed', err.message);
@@ -235,7 +207,7 @@ async function renderDevices(box) {
   const devices = await api.devices().catch(() => []);
   box.innerHTML = `
     <div class="flex-between" style="margin-bottom:14px">
-      <div class="muted" style="font-size:12.5px">Wearables stream through MQTT into the NeuroLink pipeline — pairing config lives here.</div>
+      <div class="muted" style="font-size:12.5px">Manage paired NeuroLink Wear bands and live device status.</div>
       ${isAdmin() ? `<button class="btn primary sm" id="add-device">${icons.plus} Pair device</button>` : '<span class="badge purple">read-only · admin manages devices</span>'}
     </div>
     <div class="grid cols-2">
@@ -257,28 +229,13 @@ async function renderDevices(box) {
               <span class="muted">Battery</span><b class="mono">${d.battery}%${d.charging ? ' ⚡ charging' : ''}</b>
             </div>
             <div class="meter" style="margin-bottom:12px"><i style="width:${d.battery}%;background:${d.battery < 20 ? 'var(--danger)' : 'var(--ok)'}"></i></div>
-            <div class="flex-between" style="margin-bottom:6px">
-              <span class="muted">Broker</span><b class="mono" style="font-size:11.5px">${esc(d.mqtt_host)}:${d.mqtt_port}${d.mqtt_tls ? ' 🔒' : ''}</b>
-            </div>
-            <div class="flex-between" style="margin-bottom:6px">
-              <span class="muted">${d.mqtt_tls ? 'TLS MQTT URL' : 'MQTT URL'}</span>
-              <b class="mono" style="font-size:11px">${d.mqtt_tls ? 'mqtts' : 'mqtt'}://${esc(d.mqtt_host)}:${d.mqtt_port}</b>
-            </div>
-            ${d.mqtt_tls ? `
-            <div class="flex-between" style="margin-bottom:6px">
-              <span class="muted">TLS Websocket URL</span>
-              <b class="mono" style="font-size:11px">wss://${esc(d.mqtt_host)}:8884/mqtt</b>
-            </div>` : ''}
-            <div class="flex-between" style="margin-bottom:6px">
-              <span class="muted">Topic</span><b class="mono" style="font-size:11.5px">${esc(d.mqtt_topic)}</b>
-            </div>
             <div class="flex-between">
               <span class="muted">Last seen</span><b>${fmtRelative(d.last_seen)}</b>
             </div>
             ${isAdmin() ? `
             <div class="row" style="margin-top:13px">
               <button class="btn ghost sm" data-test="${d.id}">${icons.wifi} Test</button>
-              <button class="btn ghost sm" data-editd="${d.id}">${icons.edit} Edit config</button>
+              <button class="btn ghost sm" data-editd="${d.id}">${icons.edit} Edit device</button>
               <button class="btn ghost sm" data-deld="${d.id}">${icons.trash} Remove</button>
             </div>` : ''}
           </div>
@@ -293,8 +250,8 @@ async function renderDevices(box) {
       b.disabled = true;
       try {
         const res = await api.testDevice(+b.dataset.test);
-        if (res.ok) toast('success', 'Broker reachable', res.message);
-        else toast('error', `Broker test failed (${res.stage || 'unknown'})`, res.message);
+        if (res.ok) toast('success', 'Device reachable', 'Connection verified.');
+        else toast('error', 'Connection test failed', 'Could not reach the wearable stream.');
       } catch (err) {
         toast('error', 'Test failed', err.message);
       } finally {
@@ -305,7 +262,7 @@ async function renderDevices(box) {
   $$('[data-deld]').forEach((b) => {
     b.onclick = async () => {
       const d = devices.find((x) => x.id === +b.dataset.deld);
-      if (await confirmDialog('Remove device?', `<b>${esc(d.name)}</b> will be unpaired and its MQTT config deleted.`, 'Remove')) {
+      if (await confirmDialog('Remove device?', `<b>${esc(d.name)}</b> will be unpaired and removed from this profile.`, 'Remove')) {
         await api.deleteDevice(d.id).then(() => {
           toast('success', 'Device removed');
           renderTab();
@@ -332,7 +289,7 @@ async function renderThresholds(box) {
       </div>
       <div class="card-body">
         <p class="muted" style="font-size:12.5px;margin-bottom:12px">
-          Alerts fire the moment a live reading crosses these limits. Values are tailored to Margaret's clinical profile
+          Alerts fire the moment a live reading crosses these limits. Values are tailored to Abdelrahman's clinical profile
           (hypertension, mild COPD). Changes take effect on the next reading — typically within 2 seconds.
         </p>
         <div class="threshold-row">
@@ -519,7 +476,7 @@ async function renderPatient(box) {
       </div>
       <div class="card-body">
         <div class="row" style="align-items:center;margin-bottom:16px">
-          <span class="avatar lg" style="background:${esc(p.avatar_color)}">MT</span>
+          <span class="avatar lg" style="background:${esc(p.avatar_color)}">${esc((p.name || 'AB').split(' ').map((x) => x[0]).slice(0, 2).join('').toUpperCase())}</span>
           <div>
             <strong style="font-size:17px">${esc(p.name)}</strong>
             <div class="muted">${p.age} · ${esc(p.gender)} · ${esc(p.room)}</div>
@@ -583,7 +540,7 @@ async function renderCalibration(box) {
 
   box.innerHTML = `
   <div class="panel">
-    <h3 style="margin:0 0 4px">Calibration — personalised equation baselines</h3>
+    <h3 style="margin:0 0 4px">Calibration — personalised baselines</h3>
     <div class="row" style="align-items:center;gap:8px;margin-bottom:12px">
       <span class="${s.status === 'active' ? 'badge ok' : 'badge neutral'}">${s.status === 'active' ? 'Calibrated' : 'Warming up'}</span>
       <span class="badge neutral">${Math.round((s.confidence || 0) * 100)}% confidence · ${s.n_obs} samples</span>
@@ -591,8 +548,7 @@ async function renderCalibration(box) {
       <button class="btn primary" id="cal-autofit">Auto-fit from 24 h data</button>
     </div>
     <p class="muted" style="margin:0 0 16px;max-width:820px">
-      The "AI" here is transparent physiology equations with per-patient calibration — no training dataset.
-      Baselines learn from the stream automatically; a few guided measurements (oral thermometer, clinical
+      Personal baselines learn from the wearable stream automatically; guided reference measurements (oral thermometer, clinical
       pulse-oximeter, resting HR/HRV) add ground-truth offsets. <strong>Clinical safety floors never move.</strong>
     </p>
 
@@ -652,69 +608,6 @@ async function renderCalibration(box) {
             <td class="muted">${esc(String(r.applied || ''))}</td>
           </tr>`).join('')}</tbody>
       </table></div>` : ''}
-
-    <h4 style="margin:22px 0 8px">Live equations on the latest reading</h4>
-    ${live ? `
-    <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
-      <div class="panel" style="margin:0">
-        <div class="row" style="align-items:center;gap:8px"><strong>Stress index</strong>
-          <span class="${live.stress.z_max >= rules.stress_z ? 'badge critical' : 'badge ok'}">
-            z_max ${live.stress.z_max}σ ${live.stress.z_max >= rules.stress_z ? '→ trigger' : '→ normal'}</span></div>
-        <div class="row" style="align-items:center;gap:8px;margin:8px 0"><span style="width:130px" class="muted">GSR phasic z</span>
-          <div style="flex:1;height:8px;background:rgba(128,128,128,.25);border-radius:4px">${bar(live.stress.terms.gsr_phasic_z)}</div>
-          <b style="width:44px;text-align:right">${live.stress.terms.gsr_phasic_z}</b></div>
-        <div class="row" style="align-items:center;gap:8px;margin:8px 0"><span style="width:130px" class="muted">HRV drop z</span>
-          <div style="flex:1;height:8px;background:rgba(128,128,128,.25);border-radius:4px">${bar(live.stress.terms.hrv_drop_z)}</div>
-          <b style="width:44px;text-align:right">${live.stress.terms.hrv_drop_z}</b></div>
-        <div class="row" style="align-items:center;gap:8px;margin:8px 0"><span style="width:130px" class="muted">HR rise z</span>
-          <div style="flex:1;height:8px;background:rgba(128,128,128,.25);border-radius:4px">${bar(live.stress.terms.hr_rise_z)}</div>
-          <b style="width:44px;text-align:right">${live.stress.terms.hr_rise_z}</b></div>
-        <div class="muted" style="font-size:12px;margin-top:6px">
-          S = clamp(0.5 + Σσ-evidence/5) → ${live.stress.calibrated} · legacy score ${live.stress.legacy}</div>
-      </div>
-      <div class="panel" style="margin:0">
-        <div class="row" style="gap:8px"><strong>Core-equivalent temperature</strong>${badgeFor('temp_offset')}</div>
-        <p style="margin:8px 0">T<sub>core</sub> ≈ ${Number(b.temp_gain ?? 1)}·T<sub>skin</sub> ${Number(b.temp_offset) >= 0 ? '+' : '−'} ${Math.abs(Number(b.temp_offset)).toFixed(2)}°C
-          → <strong>${live.fever.core_temp}°C</strong></p>
-        <div class="muted" style="font-size:12px">Fever floor (clinical, fixed): ${floors.temp_fever}°C core-equivalent</div>
-      </div>
-      <div class="panel" style="margin:0">
-        <div class="row" style="gap:8px"><strong>HR vs expected for activity</strong>${badgeFor('hr_rest')}</div>
-        <p style="margin:8px 0">Expected ${live.hr.hr_expected} bpm · deviation
-          <strong>${live.hr.deviation >= 0 ? '+' : ''}${live.hr.deviation} bpm</strong></p>
-        <div class="muted" style="font-size:12px">HR_exp = HR_rest<sub>personal</sub> + (activity demand × age factor)</div>
-      </div>
-      <div class="panel" style="margin:0">
-        <div class="row" style="gap:8px"><strong>SpO₂ calibrated</strong>${badgeFor('spo2_offset')}</div>
-        <p style="margin:8px 0">band + offset → <strong>${live.spo2_calibrated}%</strong>
-          · hypoxic burden ${s.hypoxic_burden ?? 0} %·min</p>
-        <div class="muted" style="font-size:12px">Burden = Σ·min of (92 − SpO₂)⁺ with decay · urgent floor ${floors.spo2_urgent}%</div>
-      </div>
-    </div>` : `<p class="muted">No readings yet — start the simulation in Settings to populate live equations.</p>`}
-
-    <h4 style="margin:22px 0 8px">Two-tier safety thresholds</h4>
-    <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
-      <div class="panel" style="margin:0">
-        <div class="row" style="gap:8px"><strong>Tier 1 · clinical floors</strong><span class="badge critical">Never personalised</span></div>
-        <ul class="muted" style="margin:8px 0 0 18px;padding:0;font-size:13px;line-height:2">
-          <li>SpO₂ &lt; ${floors.spo2_urgent}% → critical · &lt; ${floors.spo2_low}% → high</li>
-          <li>Core-equivalent temp ≥ ${floors.temp_fever}°C → fever</li>
-          <li>Fall impact ≥ ${floors.fall_impact_g}g with tumble ≥ ${floors.fall_gyro} rad/s</li>
-          <li>Resting HR ≥ ${floors.hr_max_absolute} or ≤ ${floors.hr_min_absolute} bpm</li>
-        </ul>
-      </div>
-      <div class="panel" style="margin:0">
-        <div class="row" style="gap:8px"><strong>Tier 2 · personal σ-rules</strong><span class="badge neutral">Editable</span></div>
-        <label class="field" style="margin:10px 0 4px"><span>Stress trigger at z ≥ <b id="cal-z-val">${rules.stress_z}</b>σ</span>
-          <input type="range" min="1" max="4" step="0.1" value="${rules.stress_z}" id="cal-z-slider"></label>
-        <label class="field" style="margin:10px 0 4px"><span>HRV drop at <b id="cal-hrv-val">${rules.hrv_drop_pct}</b>% below personal rest</span>
-          <input type="range" min="20" max="70" step="5" value="${rules.hrv_drop_pct}" id="cal-hrv-slider"></label>
-        <div class="muted" style="font-size:12px;margin-top:8px">A condition fires when EITHER tier fires — calibration can only add sensitivity.</div>
-      </div>
-    </div>
-    <div class="row" style="justify-content:flex-end;margin-top:12px">
-      <button class="btn ghost" id="cal-rules-save">Save personal rules</button>
-    </div>
   </div>`;
 
   // ── wiring ──
@@ -759,20 +652,6 @@ async function renderCalibration(box) {
       renderTab();
     } catch (err) { toast('error', 'Reference failed', err.message); }
   };
-
-  const zSlider = q('#cal-z-slider'), hrvSlider = q('#cal-hrv-slider');
-  if (zSlider) zSlider.oninput = () => { q('#cal-z-val').textContent = zSlider.value; };
-  if (hrvSlider) hrvSlider.oninput = () => { q('#cal-hrv-val').textContent = hrvSlider.value; };
-  const rulesSave = q('#cal-rules-save');
-  if (rulesSave) rulesSave.onclick = async () => {
-    try {
-      await api.updateCalibration({
-        personal_rules: { stress_z: Number(zSlider.value), hrv_drop_pct: Number(hrvSlider.value) },
-      });
-      toast('success', 'Personal rules saved');
-      renderTab();
-    } catch (err) { toast('error', 'Save failed', err.message); }
-  };
 }
 
 /* ─────────────────────────────────── router ────────────────────────── */
@@ -797,12 +676,12 @@ export default {
       <div class="page-head">
         <div>
           <h2>Caregiver &amp; Device Management</h2>
-          <div class="subtitle">Emergency contacts, wearable pairing with MQTT broker configuration, personalized alert thresholds and the care team.</div>
+          <div class="subtitle">Emergency contacts, wearable device pairing, personalized alert thresholds and the care team.</div>
         </div>
       </div>
       <div class="tabs" id="mgmt-tabs">
         <button class="tab-btn ${activeTab === 'contacts' ? 'active' : ''}" data-tab="contacts">Emergency contacts</button>
-        <button class="tab-btn ${activeTab === 'devices' ? 'active' : ''}" data-tab="devices">Devices &amp; MQTT</button>
+        <button class="tab-btn ${activeTab === 'devices' ? 'active' : ''}" data-tab="devices">Devices</button>
         <button class="tab-btn ${activeTab === 'thresholds' ? 'active' : ''}" data-tab="thresholds">Alert thresholds</button>
         <button class="tab-btn ${activeTab === 'patient' ? 'active' : ''}" data-tab="patient">Wearer profile</button>
         <button class="tab-btn ${activeTab === 'calibration' ? 'active' : ''}" data-tab="calibration">Calibration</button>

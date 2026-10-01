@@ -2,21 +2,21 @@
  * NeuroLink Wear — application shell: routing, theme, sticky device banner,
  * global SOS flow and live WebSocket fan-out.
  */
-import { api, auth } from './api.js?v=20260927-5';
-import { store } from './store.js?v=20260927-5';
-import { connectWS, disconnectWS, onWS, wsState } from './ws.js?v=20260927-5';
+import { api, auth } from './api.js?v=20261001-4';
+import { store } from './store.js?v=20261001-4';
+import { connectWS, disconnectWS, onWS, wsState } from './ws.js?v=20261001-4';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, fmtRelative, fmtDateTime,
   confirmDialog,
-} from './ui.js?v=20260927-5';
+} from './ui.js?v=20261001-4';
 
-import loginView from './views/login.js?v=20260927-5';
-import overviewView from './views/overview.js?v=20260927-5';
-import alertsView from './views/alerts.js?v=20260927-5';
-import safetyView from './views/safety.js?v=20260927-5';
-import trendsView from './views/trends.js?v=20260927-5';
-import managementView from './views/management.js?v=20260927-5';
-import settingsView from './views/settings.js?v=20260927-5';
+import loginView from './views/login.js?v=20261001-4';
+import overviewView from './views/overview.js?v=20261001-4';
+import alertsView from './views/alerts.js?v=20261001-4';
+import safetyView from './views/safety.js?v=20261001-4';
+import trendsView from './views/trends.js?v=20261001-4';
+import managementView from './views/management.js?v=20261001-4';
+import settingsView from './views/settings.js?v=20261001-4';
 
 const routes = {
   overview: overviewView,
@@ -64,7 +64,125 @@ function updateBanner(device) {
   $('#status-sync').textContent = `last sync ${fmtRelative(device.last_seen)}`;
 }
 
-/* ── global SOS flow ─────────────────────────────────────────────────── */
+/* ── global SOS & 30-second Fall Check-in ("Are you OK?") flows ──────── */
+let fallCheckInterval = null;
+let activeFallAlertId = null;
+
+export async function openFallCheckModal(alertObj = null) {
+  if (fallCheckInterval) {
+    clearInterval(fallCheckInterval);
+    fallCheckInterval = null;
+  }
+
+  let alert = alertObj;
+  if (!alert || !alert.id) {
+    try {
+      alert = await api.startFallCheck();
+    } catch (err) {
+      toast('error', 'Could not start fall check-in', err.message);
+      return;
+    }
+  }
+  activeFallAlertId = alert.id;
+
+  const totalSeconds = 30;
+  let remaining = totalSeconds;
+  const root = $('#modal-root');
+  root.classList.remove('hidden');
+  root.classList.add('fall-check-modal');
+  root.innerHTML = `
+    <div class="fall-check-card" role="alertdialog" aria-modal="true" aria-labelledby="fc-title">
+      <div class="fall-check-tag">FALL DETECTED</div>
+      <div class="fall-check-head">
+        <div class="fall-check-title" id="fc-title">Are you OK?</div>
+        <div class="fall-check-timer" id="fc-timer">${remaining}</div>
+      </div>
+      <div class="fall-check-bar-track">
+        <div class="fall-check-bar-fill" id="fc-bar" style="width:100%"></div>
+      </div>
+      <div class="fall-check-hint">press button = I'm OK · no answer in 30 s → help is called</div>
+      <div class="fall-check-actions">
+        <button type="button" class="fall-btn-ok" id="fc-ok-btn">✓ I'm OK (Cancel Alert)</button>
+        <button type="button" class="fall-btn-escalate" id="fc-help-btn">Call Help Now</button>
+      </div>
+    </div>`;
+
+  // Prevent accidental backdrop click from dismissing a life-safety check
+  root.onclick = null;
+
+  const cleanup = () => {
+    if (fallCheckInterval) {
+      clearInterval(fallCheckInterval);
+      fallCheckInterval = null;
+    }
+    activeFallAlertId = null;
+    root.classList.remove('fall-check-modal');
+    closeModal();
+  };
+
+  const handleDecision = async (action, reason = 'button') => {
+    const okBtn = $('#fc-ok-btn');
+    const helpBtn = $('#fc-help-btn');
+    if (okBtn) okBtn.disabled = true;
+    if (helpBtn) helpBtn.disabled = true;
+    if (fallCheckInterval) {
+      clearInterval(fallCheckInterval);
+      fallCheckInterval = null;
+    }
+    try {
+      const res = await api.fallCheck(alert.id, action, reason);
+      cleanup();
+      if (action === 'ok') {
+        toast('success', "Confirmed: I'm OK", 'Fall alert marked as false alarm — emergency escalation cancelled.', 6000);
+      } else {
+        const names = (res.dispatched || []).map((d) => d.contact_name).filter(Boolean).join(', ') || 'Primary emergency contacts';
+        toast('alert', 'CRITICAL EMERGENCY — Help Called', `Auto-dispatched to ${names}.`, 10000);
+        location.hash = '#/safety';
+      }
+      // Refresh badge count
+      api.alertsSummary().then((s) => {
+        const active = s.by_status.active || 0;
+        store.set('activeAlerts', active);
+        const badge = $('#nav-alert-count');
+        if (badge) {
+          badge.textContent = active;
+          badge.classList.toggle('hidden', active === 0);
+        }
+      }).catch(() => {});
+      if (currentView && currentRoute) navigate();
+    } catch (err) {
+      cleanup();
+      toast('error', 'Fall check update failed', err.message);
+    }
+  };
+
+  $('#fc-ok-btn').onclick = () => handleDecision('ok', 'button');
+  $('#fc-help-btn').onclick = () => handleDecision('escalate', 'button');
+
+  fallCheckInterval = setInterval(() => {
+    remaining -= 1;
+    const timerEl = $('#fc-timer');
+    const barEl = $('#fc-bar');
+    if (!timerEl || !barEl) {
+      clearInterval(fallCheckInterval);
+      fallCheckInterval = null;
+      return;
+    }
+    timerEl.textContent = Math.max(0, remaining);
+    const pct = Math.max(0, (remaining / totalSeconds) * 100);
+    barEl.style.width = `${pct}%`;
+    if (remaining <= 7) {
+      timerEl.classList.add('urgent');
+      barEl.classList.add('urgent');
+    }
+    if (remaining <= 0) {
+      clearInterval(fallCheckInterval);
+      fallCheckInterval = null;
+      handleDecision('escalate', 'timeout');
+    }
+  }, 1000);
+}
+
 async function triggerSOS() {
   const ok = await confirmDialog(
     'Trigger emergency SOS?',
@@ -160,6 +278,7 @@ async function boot() {
 
   window.addEventListener('hashchange', navigate);
   window.addEventListener('nlw:sos', triggerSOS);
+  window.addEventListener('nlw:fallcheck', (e) => openFallCheckModal(e.detail || null));
   window.addEventListener('nlw:login', async () => {
     try {
       await startSession();
@@ -187,22 +306,12 @@ async function boot() {
       if (msg.data.device) updateBanner(msg.data.device);
     } else if (msg.type === 'hello' && msg.data && msg.data.device) {
       updateBanner(msg.data.device);
-        } else if (msg.type === 'connection') {
-      // This frame is the UI's OWN WebSocket state — never the band's.
-      // Device online/offline comes from device data on telemetry/hello frames.
+    } else if (msg.type === 'connection') {
       const dot = $('#status-dot');
-      if (dot) {
-        if (msg.data.connected) {
-          dot.className = 'status-dot connecting';
-          $('#status-label').textContent = 'Syncing…';
-          api.latest().then((t) => t && t.device && updateBanner(t.device)).catch(() => {});
-        } else {
-          dot.className = 'status-dot connecting';
-          $('#status-label').textContent = 'Reconnecting…';
-        }
+      if (dot && !msg.data.connected) {
+        dot.className = 'status-dot connecting';
+        $('#status-label').textContent = 'Reconnecting…';
       }
-    } else if (msg.type === 'device_status' && msg.data) {
-      updateBanner(msg.data);
     } else if (msg.type === 'alert' && msg.data) {
       store.set('activeAlerts', (store.activeAlerts || 0) + 1);
       const badge = $('#nav-alert-count');
@@ -210,6 +319,9 @@ async function boot() {
         const n = (parseInt(badge.textContent, 10) || 0) + 1;
         badge.textContent = n;
         badge.classList.remove('hidden');
+      }
+      if (msg.data.type === 'Fall Detected' && activeFallAlertId !== msg.data.id) {
+        openFallCheckModal(msg.data);
       }
     }
   });

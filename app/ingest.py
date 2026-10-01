@@ -79,14 +79,16 @@ def _device_ts(d: dict) -> str:
 
 def build_reading(d: dict) -> dict:
     """Normalise an ESP32 / internal payload into the canonical reading shape."""
+    import os
+    use_sentinel = os.environ.get("NEUROLINK_TEST_SENTINEL", "0") == "1"
     sim = get_simulator()
     reading = {
         "ts": _device_ts(d),
-        "heart_rate": _num(_first(d, "Heart_Rate", "heart_rate"), 72.0, positive=False),
-        "temperature": _num(_first(d, "Body_Temperature", "temperature"), 36.6, positive=False),
-        "spo2": _num(_first(d, "Blood_Oxygen", "spo2"), 97.0, positive=False),
-        "gsr": _num(_first(d, "GSR_Value", "gsr"), 0.4),
-        "hrv": _num(_first(d, "HRV", "hrv"), 50.0, positive=False),
+        "heart_rate": _num(_first(d, "Heart_Rate", "heart_rate"), 72.0 if use_sentinel else 0.0, positive=use_sentinel),
+        "temperature": _num(_first(d, "Body_Temperature", "temperature"), 36.6 if use_sentinel else 0.0, positive=use_sentinel),
+        "spo2": _num(_first(d, "Blood_Oxygen", "spo2"), 97.0 if use_sentinel else 0.0, positive=use_sentinel),
+        "gsr": _num(_first(d, "GSR_Value", "gsr"), 0.4 if use_sentinel else 0.0),
+        "hrv": _num(_first(d, "HRV", "hrv"), 50.0 if use_sentinel else 0.0, positive=use_sentinel),
         "steps": int(_num(_first(d, "Step_Count", "steps"), 0.0)),
         "activity": _first(d, "Activity_Status", "activity") or "Resting",
         "accel_x": _num(_first(d, "Accel_X", "accel_x"), 0.0),
@@ -96,7 +98,8 @@ def build_reading(d: dict) -> dict:
         "gyro_y": _num(_first(d, "Gyro_Y", "gyro_y"), 0.0),
         "gyro_z": _num(_first(d, "Gyro_Z", "gyro_z"), 0.0),
         "sweat_response": _num(_first(d, "Sweat_Response", "sweat_response", "sweat"), 0.0),
-        "battery": _num(_first(d, "battery", "Battery"), 87.0),
+        "battery": int(_num(_first(d, "battery", "Battery"), 100.0)),
+        "charging": bool(d.get("charging", False)),
     }
     if reading["gsr"] > GSR_BAND_MAX:          # firmware ADC overshoot -> calibrated band
         reading["gsr"] = round(reading["gsr"] * GSR_FIRMWARE_SCALE, 3)
@@ -122,7 +125,7 @@ async def process_device_payload(d: dict, source: str = "device") -> dict:
     cal = cal_observe(reading)          # personal baselines adapt online
     with get_db() as db:
         th = one(db.execute("SELECT * FROM thresholds WHERE patient_id=1")) or {}
-    patient = {"name": "Margaret Thompson", "age": 78}
+        patient = one(db.execute("SELECT * FROM patients WHERE id=1")) or {"name": "Abdelrahman", "age": 78}
     events = evaluate(reading, th, patient, cal)
 
     sim = get_simulator()
@@ -132,6 +135,29 @@ async def process_device_payload(d: dict, source: str = "device") -> dict:
         if alert:
             created.append(alert)
     sim.persist(reading)
+    sim.persist_device(reading)
+    if d.get("lat") is not None and d.get("lng") is not None:
+        sim.persist_location(reading)
+
+    # Keep daily activity summary up to date with real device steps
+    day = reading["ts"][:10]
+    steps = int(reading.get("steps") or 0)
+    with get_db() as db:
+        db.execute(
+            """INSERT INTO activity_daily(date,steps,active_minutes,resting_hr,sleep_hours,calories,distance_km)
+               VALUES(?,?,?,?,?,?,?)
+               ON CONFLICT(date) DO UPDATE SET
+                   steps=MAX(activity_daily.steps, excluded.steps),
+                   active_minutes=MAX(activity_daily.active_minutes, excluded.active_minutes),
+                   calories=MAX(activity_daily.calories, excluded.calories),
+                   distance_km=MAX(activity_daily.distance_km, excluded.distance_km)""",
+            (day, steps, max(0, int(steps / 95)), round(reading["heart_rate"] or 0, 1),
+             0.0, int(steps * 0.038), round(steps * 0.0007, 2)),
+        )
+        dev = one(db.execute(
+            "SELECT id,name,model,serial,firmware,battery,charging,online,status,mqtt_host,mqtt_port,mqtt_topic,mqtt_tls,protocol,last_seen FROM devices WHERE id=1"
+        ))
+    reading["device"] = dev
 
     if sim.on_message:
         await sim.on_message({"type": "telemetry", "data": reading})

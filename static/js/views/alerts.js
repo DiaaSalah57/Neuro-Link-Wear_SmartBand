@@ -2,12 +2,12 @@
  * NeuroLink Wear — AI Insights & Alerts: anomaly alerts with severity badges,
  * LLM plain-language explanations, recommendations, plus the AI summary feed.
  */
-import { api } from '../api.js?v=20260927-5';
-import { onWS } from '../ws.js?v=20260927-5';
+import { api } from '../api.js?v=20261001-4';
+import { onWS } from '../ws.js?v=20261001-4';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, emptyState,
   typeIcon, skeletonCards, confirmDialog,
-} from '../ui.js?v=20260927-5';
+} from '../ui.js?v=20261001-4';
 
 let unsubWS = null;
 let state = { status: 'all', severity: 'all', type: 'all' };
@@ -15,6 +15,10 @@ let state = { status: 'all', severity: 'all', type: 'all' };
 function alertCard(a) {
   const recs = (a.recommendation || '').split('•').map((s) => s.trim()).filter(Boolean);
   const r = a.readings || {};
+  const isTier3 = a.type === 'General Anomaly';
+  const mlTier = r.ml_tier && typeof r.ml_tier === 'object' ? r.ml_tier : null;
+  const hasMlScore = mlTier && mlTier.available && typeof mlTier.score === 'number';
+
   const pills = [];
   if (r.heart_rate) pills.push(['HR', `${Number(r.heart_rate).toFixed(0)} bpm`]);
   if (r.spo2) pills.push(['SpO₂', `${Number(r.spo2).toFixed(0)}%`]);
@@ -23,18 +27,29 @@ function alertCard(a) {
   if (r.hrv) pills.push(['HRV', `${Number(r.hrv).toFixed(0)} ms`]);
   if (r.stress !== undefined) pills.push(['Stress', Number(r.stress).toFixed(2)]);
   if (r.accel_mag) pills.push(['Impact', `${Number(r.accel_mag).toFixed(1)} g`]);
+  if (hasMlScore && isTier3) pills.push(['ML Score', Number(mlTier.score).toFixed(3)]);
+
+  // Equation terms & Tier 3 ML model score breakdown for the expanded detail view
+  const eqTerms = [];
+  if (r.stress_z_max !== undefined) eqTerms.push(['Peak σ-evidence', `${Number(r.stress_z_max).toFixed(2)}σ`]);
+  if (r.stress_terms && r.stress_terms.gsr_phasic_z !== undefined) eqTerms.push(['z(GSR phasic)', `${Number(r.stress_terms.gsr_phasic_z).toFixed(2)}σ`]);
+  if (r.stress_terms && r.stress_terms.hrv_drop_z !== undefined) eqTerms.push(['z(HRV drop)', `${Number(r.stress_terms.hrv_drop_z).toFixed(2)}σ`]);
+  if (r.core_temp !== undefined) eqTerms.push(['Core-equiv temp', `${Number(r.core_temp).toFixed(2)} °C`]);
+  if (r.hypoxic_burden !== undefined && Number(r.hypoxic_burden) > 0) eqTerms.push(['Hypoxic burden', `${Number(r.hypoxic_burden).toFixed(1)} %·min`]);
+  if (hasMlScore) eqTerms.push(['Isolation Forest score', Number(mlTier.score).toFixed(4)]);
 
   return `
-  <div class="card alert-card sev-${a.severity}" data-alert-id="${a.id}">
+  <div class="card alert-card sev-${a.severity} ${isTier3 ? 'tier-ml-card' : ''}" data-alert-id="${a.id}" data-alert-type="${esc(a.type)}">
     <div class="card-pad">
       <div class="alert-head">
         <div>
           <div class="row" style="gap:8px">
-            <span class="vital-icon" style="width:32px;height:32px;font-size:15px;background:var(--danger-soft);color:var(--danger)">${typeIcon(a.type)}</span>
+            <span class="vital-icon" style="width:32px;height:32px;font-size:15px;background:${isTier3 ? 'var(--accent-soft)' : 'var(--danger-soft)'};color:${isTier3 ? 'var(--accent)' : 'var(--danger)'}">${isTier3 ? icons.robot : typeIcon(a.type)}</span>
             <h4>${esc(a.title)}</h4>
           </div>
           <div class="alert-meta">
             <span class="badge ${a.severity}">${esc(a.severity)}</span>
+            ${isTier3 ? `<span class="badge purple ml-tier-badge" data-tier="ml" title="Flagged by Tier 3 Isolation Forest ML model">${icons.robot} ML Model · AI-flagged</span>` : ''}
             <span class="badge ${a.status}">${esc(a.status)}</span>
             <span>${esc(a.type)}</span>
             <span>·</span>
@@ -45,15 +60,18 @@ function alertCard(a) {
       </div>
 
       <div class="ai-explain">
-        <div class="ai-tag">${icons.robot} AI explanation</div>
+        <div class="ai-tag"><span style="display:inline-flex;width:15px;height:15px;flex:0 0 15px">${icons.robot}</span> <span>${isTier3 ? 'Tier 3 ML model explanation' : 'AI explanation'}</span></div>
         ${esc(a.explanation)}
       </div>
 
       ${recs.length ? `
       <div class="recommend-list">
-        <div class="ai-tag" style="color:var(--ok);margin-bottom:6px">${icons.shield} Recommended actions</div>
-        <ul style="list-style:disc;padding-left:18px">
-          ${recs.map((x) => `<li>${esc(x)}</li>`).join('')}
+        <div class="ai-tag" style="display:flex;align-items:center;gap:6px;color:var(--ok);margin-bottom:8px;font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase">
+          <span style="display:inline-flex;width:15px;height:15px;flex:0 0 15px">${icons.shield}</span>
+          <strong style="font-weight:800">Recommended actions</strong>
+        </div>
+        <ul style="list-style:disc;padding-left:18px;font-weight:600">
+          ${recs.map((x) => `<li style="font-weight:600">${esc(x)}</li>`).join('')}
         </ul>
       </div>` : ''}
 
@@ -62,7 +80,14 @@ function alertCard(a) {
         ${pills.map(([k, v]) => `<span class="reading-pill">${k} <b>${v}</b></span>`).join('')}
       </div>` : ''}
 
+      ${(isTier3 || hasMlScore) && eqTerms.length ? `
+      <div class="readings-strip ml-detail-strip" data-ml-detail="1" style="margin-top:8px">
+        <span class="reading-pill" style="border-color:rgba(91,75,214,.32);background:var(--accent-soft);color:var(--accent)"><b>${isTier3 ? 'Tier 3 · ML Model' : 'Ensemble Evidence'}</b></span>
+        ${eqTerms.map(([k, v]) => `<span class="reading-pill">${esc(k)} <b class="mono">${esc(v)}</b></span>`).join('')}
+      </div>` : ''}
+
       <div class="alert-actions">
+        ${a.type === 'Fall Detected' && a.status !== 'resolved' ? `<button class="btn soft sm" data-act="fallcheck">${icons.activity} Are you OK? (30s check)</button>` : ''}
         ${a.status === 'active' ? `<button class="btn warn sm" data-act="ack">${icons.check} Acknowledge</button>` : ''}
         ${a.status !== 'resolved' ? `<button class="btn primary sm" data-act="resolve">${icons.check} Mark resolved</button>` : ''}
         <button class="btn ghost sm" data-act="dispatch">${icons.phone} Dispatch contacts</button>
@@ -135,7 +160,9 @@ async function loadAlerts() {
       const alert = data.data.find((x) => x.id === id);
       const act = btn.dataset.act;
       try {
-        if (act === 'ack') {
+        if (act === 'fallcheck') {
+          window.dispatchEvent(new CustomEvent('nlw:fallcheck', { detail: alert }));
+        } else if (act === 'ack') {
           btn.disabled = true;
           await api.acknowledgeAlert(id);
           toast('success', 'Alert acknowledged', 'Your name is now attached to the incident timeline.');

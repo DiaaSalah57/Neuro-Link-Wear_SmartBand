@@ -18,6 +18,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from . import equations as eq
+from . import ml_tier
 
 # Training-set normalisation bounds (from models/pipeline_stats.json)
 GSR_MIN, GSR_MAX = 0.10, 19.93
@@ -34,6 +35,8 @@ SEVERITY_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 def stress_score(gsr: float, hrv: float) -> float:
     """Normalised 0..1 stress index — same formula as pipeline.build_features."""
     gsr_part = (gsr - GSR_MIN) / (GSR_MAX - GSR_MIN + 1e-6)
+    if hrv <= 0:
+        return round(max(0.0, min(1.0, gsr_part)), 3)
     hrv_part = 1 - (hrv - HRV_MIN) / (HRV_MAX - HRV_MIN + 1e-6)
     return round(max(0.0, min(1.0, (gsr_part + hrv_part) / 2)), 3)
 
@@ -107,7 +110,7 @@ def evaluate(reading: dict, thresholds: dict, patient: dict, cal: dict | None = 
         })
 
     # ── Low Oxygen (clinical floor OR accumulated personal burden) ──────
-    if spo2 < thresholds.get("spo2_low", 92) or spo2_calibrated < eq.CLINICAL_FLOORS["spo2_low"] or cal_hypoxia_fire:
+    if spo2 > 0 and (spo2 < thresholds.get("spo2_low", 92) or spo2_calibrated < eq.CLINICAL_FLOORS["spo2_low"] or cal_hypoxia_fire):
         sev = "critical" if min(spo2, spo2_calibrated) <= eq.CLINICAL_FLOORS["spo2_urgent"] else "high"
         events.append({
             "type": "Low Oxygen",
@@ -117,7 +120,7 @@ def evaluate(reading: dict, thresholds: dict, patient: dict, cal: dict | None = 
         })
 
     # ── Fever (skin rule OR calibrated core-equivalent temp) ─────────────
-    if temp >= thresholds.get("temp_high", 37.8) or cal_fever_fire:
+    if temp > 0 and (temp >= thresholds.get("temp_high", 37.8) or cal_fever_fire):
         sev = "high" if max(temp, core_temp) >= eq.CLINICAL_FLOORS["temp_fever"] + 0.7 else "medium"
         events.append({
             "type": "Fever",
@@ -125,7 +128,7 @@ def evaluate(reading: dict, thresholds: dict, patient: dict, cal: dict | None = 
             "title": f"Fever — {temp:.1f}°C (core-equiv. {core_temp:.1f}°C)",
             "readings": ctx,
         })
-    elif temp <= thresholds.get("temp_low", 35.5):
+    elif temp > 0 and temp <= thresholds.get("temp_low", 35.5):
         events.append({
             "type": "Fever",
             "severity": "medium",
@@ -134,7 +137,7 @@ def evaluate(reading: dict, thresholds: dict, patient: dict, cal: dict | None = 
         })
 
     # ── Stress / Panic (legacy score OR personal σ-evidence) ─────────────
-    if (stress >= 0.72 and hr - exp >= 30) or (cal_hr_fire and stress >= 0.60):
+    if hr > 0 and ((stress >= 0.72 and hr - exp >= 30) or (cal_hr_fire and stress >= 0.60)):
         events.append({
             "type": "Panic Attack",
             "severity": "critical",
@@ -151,21 +154,21 @@ def evaluate(reading: dict, thresholds: dict, patient: dict, cal: dict | None = 
         })
 
     # ── Heart-rate bounds ────────────────────────────────────────────────
-    if hr >= thresholds.get("hr_high", 110) + 25:
+    if hr > 0 and hr >= thresholds.get("hr_high", 110) + 25:
         events.append({
             "type": "Tachycardia",
             "severity": "high",
             "title": f"Severe tachycardia — {hr:.0f} bpm",
             "readings": ctx,
         })
-    elif hr >= thresholds.get("hr_high", 110):
+    elif hr > 0 and hr >= thresholds.get("hr_high", 110):
         events.append({
             "type": "Tachycardia",
             "severity": "medium",
             "title": f"Elevated heart rate — {hr:.0f} bpm",
             "readings": ctx,
         })
-    elif hr <= thresholds.get("hr_low", 50):
+    elif hr > 0 and hr <= thresholds.get("hr_low", 50):
         events.append({
             "type": "Bradycardia",
             "severity": "high" if hr <= thresholds.get("hr_low", 50) - 6 else "medium",
@@ -175,11 +178,24 @@ def evaluate(reading: dict, thresholds: dict, patient: dict, cal: dict | None = 
 
     # ── Fatigue (low HRV — clinical floor OR personal % drop) ───────────
     hrv_personal = baselines.get("hrv_rest", 42.0) * (1 - rules["hrv_drop_pct"] / 100.0)
-    if (hrv <= thresholds.get("hrv_low", 20) or hrv <= hrv_personal) and stress < thresholds.get("stress_high", 0.6) and not cal_stress_fire:
+    if hrv > 0 and (hrv <= thresholds.get("hrv_low", 20) or hrv <= hrv_personal) and stress < thresholds.get("stress_high", 0.6) and not cal_stress_fire:
         events.append({
             "type": "Fatigue",
             "severity": "low",
             "title": f"Fatigue marker — HRV {hrv:.0f} ms",
+            "readings": ctx,
+        })
+
+    # ── Tier 3: Trained ML model (Isolation Forest corroborating tier) ───
+    # Purely additive: can only append a "General Anomaly" when no Tier 1/2
+    # event fired; never suppresses or modifies Tier 1/2 detections.
+    ml_res = ml_tier.ml_anomaly(reading, cal)
+    ctx["ml_tier"] = ml_res
+    if ml_res.get("available") and ml_res.get("is_anomaly") and not events:
+        events.append({
+            "type": "General Anomaly",
+            "severity": "low",
+            "title": f"General anomaly — ML score {ml_res['score']:.3f}",
             "readings": ctx,
         })
 

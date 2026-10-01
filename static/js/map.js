@@ -51,7 +51,7 @@ export async function createMap(containerId, opts = {}) {
   if (!el) return { update() {}, destroy() {} };
   const {
     lat = 30.028018, lng = 31.201973, zoom = 15,
-    markers = [], liveLabel = 'Margaret Thompson · live position',
+    markers = [], liveLabel = 'Abdelrahman · live position',
   } = opts;
 
   let L;

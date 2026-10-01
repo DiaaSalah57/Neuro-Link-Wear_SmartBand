@@ -2,14 +2,14 @@
  * NeuroLink Wear — Safety & Emergency: live GPS map, incident timeline with
  * inactivity alerts, and one-click emergency contact dispatch.
  */
-import { api } from '../api.js?v=20260927-5';
-import { store } from '../store.js?v=20260927-5';
-import { onWS } from '../ws.js?v=20260927-5';
+import { api } from '../api.js?v=20261001-4';
+import { store } from '../store.js?v=20261001-4';
+import { onWS } from '../ws.js?v=20261001-4';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, fmtTime,
   emptyState, skeletonCards, typeIcon, confirmDialog,
-} from '../ui.js?v=20260927-5';
-import { createMap } from '../map.js?v=20260927-5';
+} from '../ui.js?v=20261001-4';
+import { createMap } from '../map.js?v=20261001-4';
 
 let unsubWS = null;
 let mapCtl = null;
@@ -136,7 +136,7 @@ async function refreshMap() {
     lat: focus?.lat || lat, lng: focus?.lng || lng,
     zoom: focus ? 16 : 15,
     markers,
-    liveLabel: 'Margaret Thompson · live band position',
+    liveLabel: 'Abdelrahman · live band position',
   });
   const pill = $('#gps-pill');
   if (pill) pill.innerHTML = `${icons.pin} ${lat.toFixed(5)}, ${lng.toFixed(5)} · ${fmtRelative(latest?.ts)}`;
@@ -145,7 +145,7 @@ async function refreshMap() {
 function openDispatchModal(alert) {
   api.contacts().then((contacts) => {
     const dispatchable = contacts.filter((c) => c.can_dispatch);
-    import('../ui.js?v=20260927-5').then(({ openModal, closeModal }) => {
+    import('../ui.js?v=20261001-4').then(({ openModal, closeModal }) => {
       openModal({
         title: 'Dispatch emergency contacts',
         wide: true,
@@ -167,7 +167,7 @@ function openDispatchModal(alert) {
           </div>
           <div class="field" style="margin-top:12px">
             <span>Message template</span>
-            <textarea id="dispatch-message">NeuroLink Wear emergency dispatch: Margaret Thompson may need immediate assistance${alert ? ` (${alert.title})` : ''}. Please respond. Live GPS is available on the Safety dashboard.</textarea>
+            <textarea id="dispatch-message">NeuroLink Wear emergency dispatch: Abdelrahman may need immediate assistance${alert ? ` (${alert.title})` : ''}. Please respond. Live GPS is available on the Safety dashboard.</textarea>
           </div>
           <div class="row">
             <span class="muted" style="font-size:12px">Channel:</span>
@@ -313,6 +313,7 @@ export default {
                 <span class="badge neutral" id="contact-count">…</span>
               </div>
               <div class="divider"></div>
+              <button class="btn soft block" style="margin-bottom:8px" id="panel-fallcheck">${icons.activity} Fall Check-In ("Are you OK?" 30s)</button>
               <button class="btn danger block" id="panel-dispatch">${icons.phone} One-click dispatch</button>
               <button class="btn ghost block" style="margin-top:8px" id="panel-edit-contacts">${icons.users} Manage contacts</button>
             </div>
@@ -348,6 +349,7 @@ export default {
     $('#safety-refresh').onclick = () => { loadTimeline(); refreshMap(); loadDispatchLog(); };
     $('#safety-sos').onclick = () => window.dispatchEvent(new CustomEvent('nlw:sos'));
     $('#safety-dispatch-btn').onclick = () => openDispatchModal(null);
+    $('#panel-fallcheck').onclick = () => window.dispatchEvent(new CustomEvent('nlw:fallcheck'));
     $('#panel-dispatch').onclick = () => openDispatchModal(null);
     $('#panel-edit-contacts').onclick = () => { location.hash = '#/management?tab=contacts'; };
 

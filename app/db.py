@@ -91,9 +91,9 @@ CREATE TABLE IF NOT EXISTS devices (
     charging      INTEGER DEFAULT 0,
     status        TEXT DEFAULT 'paired' CHECK (status IN ('paired','unpaired','archived')),
     online        INTEGER DEFAULT 1,
-    mqtt_host     TEXT DEFAULT 'broker.hivemq.com',
-    mqtt_port     INTEGER DEFAULT 1883,
-    mqtt_topic    TEXT DEFAULT 'neurolink/sensors',
+    mqtt_host     TEXT DEFAULT '831c5bf5139c44d898a9ba6f0b3c526c.s1.eu.hivemq.cloud',
+    mqtt_port     INTEGER DEFAULT 8883,
+    mqtt_topic    TEXT DEFAULT 'neurolink/sensors/data',
     mqtt_username TEXT DEFAULT '',
     mqtt_password TEXT DEFAULT '',
     mqtt_tls      INTEGER DEFAULT 1,
@@ -225,9 +225,28 @@ CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS calibration (
+    patient_id  INTEGER PRIMARY KEY,
+    state       TEXT NOT NULL,
+    updated_at  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS calibration_refs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    patient_id  INTEGER NOT NULL,
+    kind        TEXT NOT NULL,
+    value       REAL NOT NULL,
+    band_value  REAL,
+    applied     TEXT NOT NULL,
+    note        TEXT,
+    ts          TEXT NOT NULL
+);
 """
 
 
 def init_db() -> None:
     with get_db() as db:
         db.executescript(SCHEMA)
+    from .seed import seed_all
+    seed_all()

@@ -1,8 +1,8 @@
 /**
  * NeuroLink Wear — Settings: appearance, account & session, system info.
  */
-import { api, auth } from '../api.js?v=20260927-5';
-import { $, $$, esc, icons, toast, confirmDialog } from '../ui.js?v=20260927-5';
+import { api, auth } from '../api.js?v=20261001-4';
+import { $, $$, esc, icons, toast, confirmDialog } from '../ui.js?v=20261001-4';
 
 export default {
   async render(root) {
@@ -11,7 +11,7 @@ export default {
       <div class="page-head">
         <div>
           <h2>Settings</h2>
-          <div class="subtitle">Appearance, account security and platform information.</div>
+          <div class="subtitle">Appearance and account preferences.</div>
         </div>
       </div>
 
@@ -60,32 +60,6 @@ export default {
             <button class="btn ghost block" id="set-signout" style="margin-top:14px">Sign out of this device</button>
           </div>
         </div>
-
-        <div class="card">
-          <div class="card-head"><h3>${icons.shield} Demo quick reference</h3></div>
-          <div class="card-body" style="font-size:12.8px;line-height:1.75">
-            <p class="muted">This deployment ships pre-seeded with realistic demo data so every flow works instantly:</p>
-            <div class="divider"></div>
-            <div class="flex-between"><span class="muted">Caregiver login</span><b class="mono">caregiver@neurolink.health · caregiver123</b></div>
-            <div class="flex-between" style="margin-top:6px"><span class="muted">Admin login</span><b class="mono">admin@neurolink.health · admin123</b></div>
-            <div class="divider"></div>
-            <p class="muted">Try the <b>Demo scenario controls</b> on the Live Overview to force fall / stress / fever / low-SpO₂
-              events and watch the AI explain and escalate in real time.</p>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-head"><h3>${icons.watch} System</h3></div>
-          <div class="card-body" style="font-size:12.8px">
-            <div class="flex-between" style="margin-bottom:8px"><span class="muted">Platform</span><b>NeuroLink Wear · Health &amp; Safety Dashboard</b></div>
-            <div class="flex-between" style="margin-bottom:8px"><span class="muted">Detection engine</span><b>Rules + Isolation Forest + LSTM ensemble</b></div>
-            <div class="flex-between" style="margin-bottom:8px"><span class="muted">Narrative AI</span><b>NeuroLink AI (HF LLM-ready)</b></div>
-            <div class="flex-between" style="margin-bottom:8px"><span class="muted">Telemetry path</span><b class="mono">MQTT → pipeline → WebSocket</b></div>
-            <div class="flex-between"><span class="muted">Data retention</span><b>30 days rolling</b></div>
-            <div class="divider"></div>
-            <button class="btn ghost block" id="set-reset-demo">${icons.refresh} Reset live stream (re-sync from device)</button>
-          </div>
-        </div>
       </div>`;
 
     $('#set-theme').onchange = (e) => {
@@ -95,14 +69,6 @@ export default {
       window.dispatchEvent(new CustomEvent('nlw:theme'));
     };
     $('#set-signout').onclick = () => window.dispatchEvent(new CustomEvent('nlw:logout'));
-    $('#set-reset-demo').onclick = async () => {
-      try {
-        const r = await api.latest();
-        toast('success', 'Stream re-synced', `Latest reading ${new Date(r.ts).toLocaleTimeString()} — WebSocket continues live.`);
-      } catch (err) {
-        toast('error', 'Re-sync failed', err.message);
-      }
-    };
   },
   destroy() {},
 };

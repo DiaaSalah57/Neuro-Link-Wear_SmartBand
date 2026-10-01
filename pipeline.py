@@ -36,7 +36,7 @@ ACTIVITY_INTENSITY_MAP = {
     'Sleeping': 1, 'Resting': 2, 'Walking': 3,
     'Running':  4, 'Exercising': 5
 }
-EXPECTED_HR = {1: 60, 2: 75, 3: 100, 4: 160, 5: 150}
+EXPECTED_HR = {1: 52, 2: 63, 3: 90, 4: 143, 5: 131}
 TIMESTEPS   = 10
 
 # ── Sliding window buffer (keeps last N scaled readings for LSTM) ─────────────

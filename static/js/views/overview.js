@@ -2,14 +2,14 @@
  * NeuroLink Wear — Live Overview: realtime vitals, IMU motion, live feed,
  * device health and AI insight cards.
  */
-import { api } from '../api.js?v=20260927-5';
-import { store } from '../store.js?v=20260927-5';
-import { onWS } from '../ws.js?v=20260927-5';
+import { api } from '../api.js?v=20261001-4';
+import { store } from '../store.js?v=20261001-4';
+import { onWS } from '../ws.js?v=20261001-4';
 import {
   $, $$, esc, icons, toast, fmtTime, fmtRelative, fmtDateTime, fmtNum,
   skeletonCards, emptyState, typeIcon,
-} from '../ui.js?v=20260927-5';
-import { sparkline } from '../charts.js?v=20260927-5';
+} from '../ui.js?v=20261001-4';
+import { sparkline } from '../charts.js?v=20261001-4';
 
 let unsubWS = null;
 let unsubStore = null;
@@ -59,13 +59,14 @@ function feedRow(item) {
         <div class="meta">
           <span>${fmtRelative(item.ts)}</span>
           ${item.badge ? `<span class="badge ${item.severity || 'neutral'}">${esc(item.badge)}</span>` : ''}
+          ${item.mlBadge ? `<span class="badge purple ml-tier-badge" data-tier="ml">${esc(item.mlBadge)}</span>` : ''}
         </div>
       </div>
     </div>`;
 }
 
 function updateLive(reading) {
-  if (!reading) return;
+  if (!reading || reading.heart_rate === undefined || reading.heart_rate === null) return;
   VITALS.forEach((cfg) => {
     const v = reading[cfg.key];
     const valEl = $(`[data-v="${cfg.key}"]`);
@@ -136,10 +137,15 @@ function renderFeed() {
 }
 
 function pushAlert(alert) {
+  const isTier3 = alert.type === 'General Anomaly';
+  const mlScore = alert.readings && alert.readings.ml_tier && typeof alert.readings.ml_tier.score === 'number'
+    ? ` (${alert.readings.ml_tier.score.toFixed(3)})`
+    : '';
   feedItems.unshift({
     kind: 'alert', ts: alert.ts, tsAdded: Date.now(),
     title: alert.title, severity: alert.severity,
     badge: `${alert.type} · ${alert.severity}`,
+    mlBadge: isTier3 ? `ML Model · AI-flagged${mlScore}` : '',
   });
   feedItems = feedItems.slice(0, 30);
   renderFeed();
@@ -239,6 +245,7 @@ export default {
             <div class="card-head"><h3>${icons.bolt} Quick Actions</h3></div>
             <div class="card-body" style="display:grid;gap:9px">
               <button class="btn danger block" id="qa-sos">${icons.shield}<span>Trigger emergency SOS</span></button>
+              <button class="btn soft block" id="qa-fallcheck">${icons.activity}<span>Fall Detected · "Are you OK?" (30s)</span></button>
               <button class="btn primary block" id="qa-dispatch">${icons.phone}<span>Dispatch emergency contacts</span></button>
               <button class="btn ghost block" id="qa-safety">${icons.map}<span>Open safety &amp; live map</span></button>
               <div class="divider"></div>
@@ -287,7 +294,6 @@ export default {
       <div class="flex-between"><span class="muted">Battery</span><b class="mono">${dev.battery}%${dev.charging ? ' ⚡' : ''}</b></div>
       <div class="meter" style="margin:6px 0 12px"><i style="width:${dev.battery}%;background:${dev.battery < 20 ? 'var(--danger)' : 'var(--ok)'}"></i></div>
       <div class="flex-between"><span class="muted">Last sync</span><b>${fmtRelative(dev.last_seen)}</b></div>
-      <div class="flex-between" style="margin-top:6px"><span class="muted">MQTT topic</span><b class="mono" style="font-size:11px">${esc(dev.mqtt_topic || 'neurolink/sensors')}</b></div>
     ` : emptyState({ icon: icons.watch, title: 'No device paired', body: 'Pair a NeuroLink band in Care Team → Devices.' });
 
     // AI insight
@@ -310,7 +316,13 @@ export default {
     // ── events ──────────────────────────────────────────────────────────
     $('#ov-refresh').onclick = async () => {
       const r = await api.latest().catch(() => null);
-      if (r) { store.pushSpark(r); updateLive(r); toast('info', 'Telemetry refreshed', `Latest reading at ${fmtTime(r.ts)}`); }
+      if (r && r.heart_rate !== undefined && r.heart_rate !== null) {
+        store.pushSpark(r);
+        updateLive(r);
+        toast('info', 'Telemetry refreshed', `Latest reading at ${fmtTime(r.ts)}`);
+      } else {
+        toast('info', 'Waiting for wearable data', 'No readings received from the band yet.');
+      }
     };
     $('#ov-ai').onclick = async (e) => {
       const btn = e.currentTarget;
@@ -332,6 +344,7 @@ export default {
       }
     };
     $('#qa-sos').onclick = () => window.dispatchEvent(new CustomEvent('nlw:sos'));
+    $('#qa-fallcheck').onclick = () => window.dispatchEvent(new CustomEvent('nlw:fallcheck'));
     $('#qa-dispatch').onclick = () => { location.hash = '#/safety?dispatch=1'; };
     $('#qa-safety').onclick = () => { location.hash = '#/safety'; };
     $$('[data-demo]').forEach((btn) => {
