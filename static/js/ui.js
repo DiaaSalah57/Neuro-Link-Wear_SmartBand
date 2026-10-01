@@ -2,7 +2,7 @@
  * NeuroLink Wear — UI toolkit: DOM helpers, icons, toasts, modals,
  * skeleton loaders and empty states.
  */
-import { localeTag } from './i18n.js?v=20261001-8';
+import { localeTag } from './i18n.js?v=20261001-7';
 
 export { localeTag };
 
@@ -61,46 +61,6 @@ export const fmtDateTime = (ts) => {
     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 };
-/**
- * How long a band stays "connected" after its last reading.
- *
- * The firmware publishes every 60 s (MQTT_PUBLISH_INTERVAL in
- * Smart_band/smart_band.ino), so the window is deliberately generous: three
- * missed publishes must not make a healthy band look disconnected. The
- * simulator streams every 2 s, so it is well inside the window too.
- */
-export const DEVICE_LIVE_WINDOW_MS = 180000;
-
-/**
- * Is the paired band actually reporting right now?
- *
- * `device.online` is sticky — the server sets it to 1 on the first payload and
- * never clears it — so the flag alone would keep a disconnected band looking
- * online (with a stale battery) forever. Require the flag *and* a recent
- * reading.
- */
-export function deviceIsLive(dev) {
-  if (!dev) return false;
-  if (dev.online !== 1 && dev.online !== true) return false;
-  if (!dev.last_seen) return false;                  // never reported
-  const seen = new Date(dev.last_seen).getTime();
-  if (!Number.isFinite(seen)) return false;
-  return Date.now() - seen <= DEVICE_LIVE_WINDOW_MS;
-}
-
-/**
- * Battery label for a band: "87%" while it is reporting, "—" once it is not —
- * the same placeholder the vitals use when a measurement is unavailable.
- */
-export function fmtBattery(dev) {
-  if (!deviceIsLive(dev)) return '—';
-  const raw = dev.battery;
-  // A missing value must not read as a confident "0%" — Number(null) is 0.
-  if (raw === null || raw === undefined || raw === '') return '—';
-  const pct = Number(raw);
-  return Number.isFinite(pct) ? `${Math.round(pct)}%` : '—';
-}
-
 export const fmtRelative = (ts) => {
   if (!ts) return '—';
   const diff = (Date.now() - new Date(ts).getTime()) / 1000;

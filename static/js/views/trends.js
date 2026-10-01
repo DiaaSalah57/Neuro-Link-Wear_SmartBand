@@ -3,12 +3,12 @@
  * interactive time-series charts (HRV, temperature, stress, HR) with
  * date-range filters and daily activity summaries.
  */
-import { api } from '../api.js?v=20261001-8';
+import { api } from '../api.js?v=20261001-7';
 import {
   $, $$, esc, icons, fmtNum, fmtDate, skeletonChart, skeletonCards,
   emptyState, localeTag,
-} from '../ui.js?v=20261001-8';
-import { lineChart, barChart, donutChart } from '../charts.js?v=20261001-8';
+} from '../ui.js?v=20261001-7';
+import { lineChart, barChart, donutChart } from '../charts.js?v=20261001-7';
 
 let rangeHours = 24;
 

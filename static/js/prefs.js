@@ -10,7 +10,7 @@
  * Wiring is delegated from the document, so buttons rendered later (Settings
  * view, re-rendered shell) keep working without re-binding.
  */
-import { getLang, setLang, initI18n, LANG_META } from './i18n.js?v=20261001-8';
+import { getLang, setLang, initI18n, LANG_META } from './i18n.js?v=20261001-7';
 
 export const FONT_LEVELS = [
   {

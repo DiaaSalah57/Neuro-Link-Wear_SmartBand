@@ -4,11 +4,11 @@
  * personalized health thresholds, patient profile, (admin) team users
  * and the calibration lab (equation-based AI baselines).
  */
-import { api, auth } from '../api.js?v=20261001-8';
+import { api, auth } from '../api.js?v=20261001-7';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, confirmDialog,
-  emptyState, skeletonLines, fmtRelative, localeTag, deviceIsLive, fmtBattery,
-} from '../ui.js?v=20261001-8';
+  emptyState, skeletonLines, fmtRelative, localeTag,
+} from '../ui.js?v=20261001-7';
 
 let activeTab = 'contacts';
 const isAdmin = () => auth.user && auth.user.role === 'admin';
@@ -222,13 +222,13 @@ async function renderDevices(box) {
                   <div class="muted" style="font-size:calc(11.5px * var(--fs))">${esc(d.model)} · SN ${esc(d.serial)} · FW ${esc(d.firmware)}</div>
                 </div>
               </div>
-              <span class="badge ${deviceIsLive(d) ? 'ok' : d.status === 'paired' ? 'medium' : 'neutral'}">${deviceIsLive(d) ? 'online' : esc(d.status)}</span>
+              <span class="badge ${d.online ? 'ok' : d.status === 'paired' ? 'medium' : 'neutral'}">${d.online ? 'online' : esc(d.status)}</span>
             </div>
             <div class="divider"></div>
             <div class="flex-between" style="margin-bottom:6px">
-              <span class="muted">Battery</span><b class="mono">${fmtBattery(d)}${deviceIsLive(d) && d.charging ? ' ⚡ charging' : ''}</b>
+              <span class="muted">Battery</span><b class="mono">${d.battery}%${d.charging ? ' ⚡ charging' : ''}</b>
             </div>
-            <div class="meter" style="margin-bottom:12px"><i style="width:${deviceIsLive(d) ? Math.max(0, Math.min(100, Number(d.battery) || 0)) : 0}%;background:${deviceIsLive(d) && Number(d.battery) < 20 ? 'var(--danger)' : 'var(--ok)'}"></i></div>
+            <div class="meter" style="margin-bottom:12px"><i style="width:${d.battery}%;background:${d.battery < 20 ? 'var(--danger)' : 'var(--ok)'}"></i></div>
             <div class="flex-between">
               <span class="muted">Last seen</span><b>${fmtRelative(d.last_seen)}</b>
             </div>
