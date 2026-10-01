@@ -1206,31 +1206,33 @@ Light canvas. A horizontal timeline with four numbered coloured nodes over four 
 def slide_team(prs):
     s = prs.slides.add_slide(prs.slide_layouts[6])
     background(s, NAVY)
-    title(s, "Team", dark=True, sub="Builders across embedded systems, data science and care — with advisors we are actively recruiting.")
+    title(s, "Team", dark=True, sub="Five seats across embedded systems, data science, product and care — advisors marked as recruiting.")
     members = [
-        ("DS", "[Founder name]", "CEO · Product & embedded systems", "Firmware, sensor integration, system architecture.", VIOLET),
+        ("DS", "Diaa Salah", "CEO · Product & embedded systems", "Firmware, sensor integration, system architecture.", VIOLET),
         ("ML", "[Co-founder name]", "CTO · AI & data", "Anomaly models, pipeline, cloud services and dashboard.", INDIGO),
+        ("TM", "[Team member 3]", "[Role / specialty]", "Add their contribution or one shipped proof point.", "8B5CF6"),
         ("CA", "[Clinical advisor]", "Geriatrics / family medicine — recruiting", "Protocol design, clinical validity, pilot ethics.", CYAN),
         ("GP", "[Growth lead]", "Partnerships & go-to-market — recruiting", "Senior-care providers, insurers, distribution.", MINT),
     ]
-    cw, gap = 2.85, 0.24
-    x = MARGIN
+    cw, gap = 2.34, 0.18
+    x = 0.55
     for ini, name, role, body, col in members:
-        rect(s, x, 2.3, cw, 3.5, fill=NAVY_2, radius=0.16)
-        disc(s, x + 0.75, 3.0, 0.9, col, ini, size=16, txt_color=NAVY if col in (CYAN, MINT) else WHITE)
-        text(s, x + 0.3, 3.7, cw - 0.6, 0.4, name, size=14, bold=True, color=WHITE)
-        text(s, x + 0.3, 4.08, cw - 0.6, 0.6, role, size=10, bold=True, color=col, line_spacing=1.15)
-        text(s, x + 0.3, 4.7, cw - 0.6, 1.0, body, size=10, color=MUTED_D, line_spacing=1.2)
+        rect(s, x, 2.3, cw, 3.62, fill=NAVY_2, radius=0.16)
+        disc(s, x + cw / 2, 3.02, 0.76, col, ini, size=13, txt_color=NAVY if col in (CYAN, MINT) else WHITE)
+        text(s, x + 0.18, 3.52, cw - 0.36, 0.48, name, size=11.4, bold=True, color=WHITE, line_spacing=1.0)
+        text(s, x + 0.18, 4.02, cw - 0.36, 0.63, role, size=8.8, bold=True, color=col, line_spacing=1.08)
+        text(s, x + 0.18, 4.72, cw - 0.36, 0.98, body, size=8.8, color=MUTED_D, line_spacing=1.13)
         x += cw + gap
-    text(s, MARGIN, 6.2, 12, 0.4, "Replace the bracketed placeholders with names, photos and one proof point each (previous product shipped, publication, clinical role).",
+    text(s, MARGIN, 6.2, 12, 0.4, "Customize card 3 with the fifth teammate’s name, photo and one proof point.",
          size=9.5, color=MUTED_D, italic=True)
     footer(s, "Team", "Who is building it", 21, dark=True)
     notes(s, """
-One proof point per person — what each has shipped or published — beats a list of titles. Highlight the complementary split: embedded/product, AI/data, clinical, growth.
-State the open seats as a strength: a geriatrics advisor and a partnerships lead are being recruited for the pilot phase, and part of the raise funds them.""")
+The layout now accommodates five people. Replace card 3’s placeholder with the additional teammate’s name, role, photo and one shipped proof point. Keep the clinical advisor and growth lead clearly marked as recruiting until those seats are filled.
+One proof point per person — what each has shipped or published — beats a list of titles. Highlight the complementary split: embedded/product, AI/data, and the fifth teammate’s actual specialty.
+State the open advisor/partnership seats honestly and explain how the pilot plan will fill them.""")
     register(21, "Team", """
-Dark canvas. Four navy-2 cards (2.85 × 3.5 in) with a 0.9 in coloured initials disc, 14 pt name, 10 pt coloured role and 10 pt description. Two cards are marked "recruiting". Italic instruction line for the founders to fill in. Footer "TEAM | WHO IS BUILDING IT".""",
-             "see notes", ["4 member cards (placeholders)"])
+Dark canvas. Five evenly spaced navy-2 cards (2.34 × 3.62 in) across the slide, each with a 0.76 in colored initials disc, compact name, role and contribution text. Two roles remain marked recruiting; card 3 is an editable placeholder for the fifth teammate. Footer "TEAM | WHO IS BUILDING IT".""",
+             "see notes", ["5 member cards", "Card 3 placeholder for fifth teammate", "Recruiting labels on open roles"])
 
 
 def slide_ask(prs):

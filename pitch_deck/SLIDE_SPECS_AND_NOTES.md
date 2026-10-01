@@ -382,16 +382,19 @@ Light canvas. A horizontal timeline with four numbered coloured nodes over four 
 
 **Layout**
 
-Dark canvas. Four navy-2 cards (2.85 × 3.5 in) with a 0.9 in coloured initials disc, 14 pt name, 10 pt coloured role and 10 pt description. Two cards are marked "recruiting". Italic instruction line for the founders to fill in. Footer "TEAM | WHO IS BUILDING IT".
+Dark canvas. Five evenly spaced navy-2 cards (2.34 × 3.62 in) across the slide, each with a 0.76 in colored initials disc, compact name, role and contribution text. Two roles remain marked recruiting; card 3 is an editable placeholder for the fifth teammate. Footer "TEAM | WHO IS BUILDING IT".
 
 **Key elements**
 
-- 4 member cards (placeholders)
+- 5 member cards
+- Card 3 placeholder for fifth teammate
+- Recruiting labels on open roles
 
 **Speaker notes**
 
-> One proof point per person — what each has shipped or published — beats a list of titles. Highlight the complementary split: embedded/product, AI/data, clinical, growth.
-> State the open seats as a strength: a geriatrics advisor and a partnerships lead are being recruited for the pilot phase, and part of the raise funds them.
+> The layout now accommodates five people. Replace card 3’s placeholder with the additional teammate’s name, role, photo and one shipped proof point. Keep the clinical advisor and growth lead clearly marked as recruiting until those seats are filled.
+> One proof point per person — what each has shipped or published — beats a list of titles. Highlight the complementary split: embedded/product, AI/data, and the fifth teammate’s actual specialty.
+> State the open advisor/partnership seats honestly and explain how the pilot plan will fill them.
 
 ### 22 · The ask / closing
 
