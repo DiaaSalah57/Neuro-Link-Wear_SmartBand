@@ -79,10 +79,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   globalThis.CustomEvent = window.CustomEvent;
   globalThis.HTMLElement = window.HTMLElement;
 
-  const loginMod = await import('./static/js/views/login.js?v=20261001-3');
-  const mgmtMod = await import('./static/js/views/management.js?v=20261001-3');
-  const alertsMod = await import('./static/js/views/alerts.js?v=20261001-3');
-  const { api, auth } = await import('./static/js/api.js?v=20261001-3');
+  const loginMod = await import('./static/js/views/login.js?v=20261001-4');
+  const mgmtMod = await import('./static/js/views/management.js?v=20261001-4');
+  const alertsMod = await import('./static/js/views/alerts.js?v=20261001-4');
+  const { api, auth } = await import('./static/js/api.js?v=20261001-4');
 
   loginMod.default.render();
 

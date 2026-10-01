@@ -4,11 +4,11 @@
  * personalized health thresholds, patient profile, (admin) team users
  * and the calibration lab (equation-based AI baselines).
  */
-import { api, auth } from '../api.js?v=20261001-3';
+import { api, auth } from '../api.js?v=20261001-4';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, confirmDialog,
   emptyState, skeletonLines, fmtRelative,
-} from '../ui.js?v=20261001-3';
+} from '../ui.js?v=20261001-4';
 
 let activeTab = 'contacts';
 const isAdmin = () => auth.user && auth.user.role === 'admin';
@@ -608,30 +608,6 @@ async function renderCalibration(box) {
             <td class="muted">${esc(String(r.applied || ''))}</td>
           </tr>`).join('')}</tbody>
       </table></div>` : ''}
-
-    <h4 style="margin:22px 0 8px">Two-tier safety thresholds</h4>
-    <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
-      <div class="panel" style="margin:0">
-        <div class="row" style="gap:8px"><strong>Tier 1 · clinical floors</strong><span class="badge critical">Never personalised</span></div>
-        <ul class="muted" style="margin:8px 0 0 18px;padding:0;font-size:13px;line-height:2">
-          <li>SpO₂ &lt; ${floors.spo2_urgent}% → critical · &lt; ${floors.spo2_low}% → high</li>
-          <li>Core-equivalent temp ≥ ${floors.temp_fever}°C → fever</li>
-          <li>Fall impact ≥ ${floors.fall_impact_g}g with tumble ≥ ${floors.fall_gyro} rad/s</li>
-          <li>Resting HR ≥ ${floors.hr_max_absolute} or ≤ ${floors.hr_min_absolute} bpm</li>
-        </ul>
-      </div>
-      <div class="panel" style="margin:0">
-        <div class="row" style="gap:8px"><strong>Tier 2 · personal σ-rules</strong><span class="badge neutral">Editable</span></div>
-        <label class="field" style="margin:10px 0 4px"><span>Stress trigger at z ≥ <b id="cal-z-val">${rules.stress_z}</b>σ</span>
-          <input type="range" min="1" max="4" step="0.1" value="${rules.stress_z}" id="cal-z-slider"></label>
-        <label class="field" style="margin:10px 0 4px"><span>HRV drop at <b id="cal-hrv-val">${rules.hrv_drop_pct}</b>% below personal rest</span>
-          <input type="range" min="20" max="70" step="5" value="${rules.hrv_drop_pct}" id="cal-hrv-slider"></label>
-        <div class="muted" style="font-size:12px;margin-top:8px">A condition fires when EITHER tier fires — calibration can only add sensitivity.</div>
-      </div>
-    </div>
-    <div class="row" style="justify-content:flex-end;margin-top:12px">
-      <button class="btn ghost" id="cal-rules-save">Save personal rules</button>
-    </div>
   </div>`;
 
   // ── wiring ──
@@ -675,20 +651,6 @@ async function renderCalibration(box) {
       toast('success', 'Reference applied', res.applied);
       renderTab();
     } catch (err) { toast('error', 'Reference failed', err.message); }
-  };
-
-  const zSlider = q('#cal-z-slider'), hrvSlider = q('#cal-hrv-slider');
-  if (zSlider) zSlider.oninput = () => { q('#cal-z-val').textContent = zSlider.value; };
-  if (hrvSlider) hrvSlider.oninput = () => { q('#cal-hrv-val').textContent = hrvSlider.value; };
-  const rulesSave = q('#cal-rules-save');
-  if (rulesSave) rulesSave.onclick = async () => {
-    try {
-      await api.updateCalibration({
-        personal_rules: { stress_z: Number(zSlider.value), hrv_drop_pct: Number(hrvSlider.value) },
-      });
-      toast('success', 'Personal rules saved');
-      renderTab();
-    } catch (err) { toast('error', 'Save failed', err.message); }
   };
 }
 
