@@ -3,7 +3,7 @@
 NeuroLink Wear — investor pitch deck generator
 ==============================================
 
-Builds `NeuroLink_Wear_Pitch_Deck.pptx` (16 slides, 16:9) with python-pptx,
+Builds `NeuroLink_Wear_Pitch_Deck.pptx` (22 slides, 16:9) with python-pptx,
 embeds speaker notes in every slide, and writes `SLIDE_SPECS_AND_NOTES.md`
 (slide-by-slide layout specs + the same notes) next to it.
 
@@ -640,7 +640,7 @@ def slide_ai(prs):
     x0 = 8.75
     label(s, x0, 2.3, 4, "Model stack", color=VIOLET, size=10)
     stack = [
-        ("1", "Isolation Forest", "Point anomalies across 21 engineered features", VIOLET),
+        ("1", "Isolation Forest", "Point anomalies across 23 engineered features", VIOLET),
         ("2", "LSTM autoencoder", "Temporal anomalies over rolling windows (threshold 0.33 reconstruction error)", INDIGO),
         ("3", "Rule-based classifier", "Explainable condition labels; safe fallback if a model is unavailable", CYAN),
         ("4", "LLM layer", "Plain-language explanation and personalised next steps (optional, non-blocking)", MINT),
@@ -662,6 +662,271 @@ Data today: 1,875 labelled readings across five activity states, with derived fe
 Light canvas. Left 62%: 3-column condition table (violet header, six zebra rows, violet first column). Right: "MODEL STACK" label and four rows — coloured numbered disc, 13 pt model name, 10 pt role. Bottom-left: 10 pt data provenance line. Footer "AI / ML | ANOMALY DETECTION AND EXPLANATION".""",
              "see notes", ["Condition table (6 rows)", "Model stack (4)", "Data provenance line"])
 
+
+
+def slide_ai_architecture(prs):
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    background(s, LIGHT)
+    title(s, "AI architecture — from sensor to alert", w=10.4,
+          sub="A target end-to-end path: wearable signals → context → detection → understandable action.")
+    pill(s, 9.9, 1.86, "Design path · validation in progress", fill=NAVY, color=WHITE, size=7.4, w=2.8, h=0.31)
+    stages = [
+        ("ESP32 band", "5 vital-sign sensors\nMotion + GPS", "6A3CE8"),
+        ("Normalize", "Check units\nBuild features", INDIGO),
+        ("Activity", "Random Forest\nContext, not alert", "1676B8"),
+        ("Calibrate", "EWMA baseline\nCrisis-gated", "0E8F72"),
+        ("Detect", "Clinical floors\nPersonal σ + ML", VIOLET),
+        ("Explain + deliver", "Plain-language alert\nLive dashboard", "D96D36"),
+    ]
+    x0, y0, cw, ch, gap = 0.62, 2.65, 1.82, 2.15, 0.32
+    for i, (head, body, col) in enumerate(stages):
+        x = x0 + i * (cw + gap)
+        rect(s, x, y0, cw, ch, fill=WHITE, line=LIGHT_3, radius=0.14)
+        rect(s, x, y0, cw, 0.1, fill=col, radius=0.05)
+        disc(s, x + 0.27, y0 + 0.42, 0.34, col, str(i + 1), size=9)
+        text(s, x + 0.16, y0 + 0.74, cw - 0.3, 0.48, head, size=12.2, bold=True, color=INK, line_spacing=1.0)
+        text(s, x + 0.16, y0 + 1.28, cw - 0.3, 0.72, body, size=9.6, color=SLATE, line_spacing=1.15)
+        if i < len(stages) - 1:
+            arrow_right(s, x + cw + 0.045, y0 + 0.91, 0.23, 0.28, fill=VIOLET)
+    rect(s, 0.62, 5.18, 12.12, 0.94, fill=NAVY, radius=0.14)
+    label(s, 0.9, 5.35, 2.2, "Decision principle", color=CYAN, size=8.5)
+    text(s, 3.05, 5.31, 9.3, 0.55,
+         "A model may add context; it never replaces a wearer-first safety workflow.",
+         size=15, bold=True, color=WHITE, anchor="m")
+    text(s, 0.65, 6.3, 12.0, 0.35,
+         "Integration note: align device MQTT topic / cloud broker with the API subscription before live end-to-end demos.",
+         size=9.2, color=SLATE, italic=True)
+    footer(s, "AI architecture", "Sensor-to-alert pathway", 8)
+    notes(s, """
+Walk left to right: the band supplies sensor readings; the backend normalizes and derives features, predicts activity context, updates an intended personal baseline, evaluates the alert paths, and delivers an explanation to the dashboard.
+Status matters: the EWMA calibration and fully independent three-tier OR policy on the next slides are the target design and require integration/validation; do not describe them as shipped until wired and tested.
+The current repository also has an integration mismatch to resolve before a live demo: firmware publishes to a cloud topic while main.py subscribes to a local broker/topic. The WebSocket dashboard path exists, but the end-to-end broker contract needs alignment.""")
+    register(8, "AI architecture — from sensor to alert", """
+Light canvas. Six horizontal rounded stage cards with colored top accents and numbered discs: ESP32 band → normalize → activity classifier → personal calibration → detection → explanation/dashboard. Violet arrows connect stages. Dark decision-principle banner below; italic integration note. A top pill marks this as a design path under validation.
+""", "see notes", ["6 editable pipeline stages", "Decision-principle banner", "Integration caveat"])
+
+
+def slide_model_roles(prs):
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    background(s, NAVY)
+    title(s, "Two trained models, two different jobs", dark=True, w=10.2,
+          sub="One recognizes movement context; the other looks for unusual multivariate readings.")
+    cards = [
+        (0.62, "CONTEXT MODEL", "Random Forest Activity Classifier", CYAN,
+         "MOTION-ONLY INPUTS", "Accelerometer · gyroscope · step count",
+         "Predicts sleeping, resting, walking, running or exercising. Its prediction is context—not an alert—and helps interpret what is normal for that activity.",
+         "OUTPUT", "Activity label → expected context"),
+        (6.83, "ANOMALY MODEL", "Isolation Forest", "F59E0B",
+         "UNSUPERVISED · 23 FEATURES", "Vitals · motion · activity intensity",
+         "Scores each live feature row for unusual combinations. A separate condition-mapping layer can translate a flagged anomaly into an explainable cause.",
+         "OUTPUT", "Anomaly label + score"),
+    ]
+    for x, tag, head, col, inlabel, inputs, body, outlabel, output in cards:
+        rect(s, x, 2.18, 5.88, 3.75, fill=NAVY_2, radius=0.18)
+        pill(s, x + 0.28, 2.42, tag, fill=col, color=NAVY if col == CYAN else WHITE, size=7.6, w=1.7)
+        text(s, x + 0.28, 2.92, 5.25, 0.55, head, size=18, bold=True, color=WHITE, font=FONT_HEAD)
+        label(s, x + 0.28, 3.63, 4.8, inlabel, color=col, size=8.3)
+        text(s, x + 0.28, 3.94, 5.2, 0.42, inputs, size=11.5, bold=True, color=WHITE)
+        hline(s, x + 0.28, 4.48, 5.3, color=NAVY_3)
+        text(s, x + 0.28, 4.63, 5.23, 0.73, body, size=10.5, color=MUTED_D, line_spacing=1.18)
+        label(s, x + 0.28, 5.43, 1.1, outlabel, color=col, size=8)
+        text(s, x + 1.36, 5.38, 4.1, 0.38, output, size=10.5, bold=True, color=WHITE)
+    rect(s, 0.62, 6.18, 12.09, 0.55, fill="262552", radius=0.12)
+    text(s, 0.87, 6.22, 11.6, 0.38,
+         "Both score a single live row without a rolling history; the LSTM autoencoder separately handles temporal windows.",
+         size=10, color=MUTED_D, align="c", anchor="m")
+    footer(s, "AI / ML", "Model roles and inference", 9, dark=True)
+    notes(s, """
+The Random Forest receives seven motion inputs only: accelerometer axes, gyroscope axes and step count. It predicts one of five activity classes. That label informs context; it is not itself an alert.
+The Isolation Forest is unsupervised and consumes the 23-feature numeric row (vitals, motion, engineered signals and activity intensity). It returns an anomaly score for a single reading. The condition mapper adds a label after the anomaly decision.
+These two models do not need a rolling buffer for inference. Separately, the existing LSTM autoencoder uses a ten-reading window, so avoid claiming that every model is memoryless.""")
+    register(9, "Two trained models, two different jobs", """
+Dark canvas. Two large navy cards side by side: cyan context-model card for Random Forest with motion-only inputs, five activity classes and a clear “context, not alert” role; amber Isolation Forest card with unsupervised 23-feature input and anomaly-score output. Bottom banner distinguishes both single-row models from the separate rolling-window LSTM.
+""", "see notes", ["Random Forest activity card", "Isolation Forest anomaly card", "Inference-window caveat"])
+
+
+def slide_model_results(prs):
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    background(s, LIGHT)
+    title(s, "Promising offline results —\nwith validation still ahead", w=9.1,
+          sub="Held-out evaluation: 375 readings from a 1,875-reading dataset.")
+    # Main metrics panel
+    rect(s, 0.62, 2.25, 5.55, 3.62, fill=NAVY, radius=0.18)
+    label(s, 0.95, 2.52, 4.5, "Activity classifier · held-out set", color=CYAN, size=8.5)
+    text(s, 0.95, 2.95, 2.4, 0.82, "94%", size=39, bold=True, color=WHITE, font=FONT_HEAD)
+    text(s, 3.3, 3.0, 2.35, 0.72, "accuracy", size=14, bold=True, color=MUTED_D, anchor="m")
+    hline(s, 0.95, 3.92, 4.9, color=NAVY_3, weight=1.1)
+    text(s, 0.95, 4.16, 2.4, 0.78, "0.94", size=34, bold=True, color=CYAN, font=FONT_HEAD)
+    text(s, 3.3, 4.22, 2.35, 0.65, "macro F1", size=14, bold=True, color=MUTED_D, anchor="m")
+    text(s, 0.95, 5.16, 4.85, 0.42, "375 test readings · 5 activity classes", size=10, color=MUTED_D)
+    # Class performance list
+    rect(s, 6.42, 2.25, 6.29, 3.62, fill=WHITE, line=LIGHT_3, radius=0.18)
+    label(s, 6.75, 2.52, 5.2, "Per-class F1", color=VIOLET, size=8.5)
+    class_rows = [("Sleeping + resting", "≈0.99", MINT), ("Walking", "0.97", CYAN),
+                  ("Running", "0.89", INDIGO), ("Exercising", "0.85", AMBER)]
+    yy = 2.95
+    for name, score, col in class_rows:
+        text(s, 6.75, yy, 2.8, 0.38, name, size=11.2, bold=True, color=INK, anchor="m")
+        rect(s, 9.55, yy + 0.09, 1.85, 0.16, fill=LIGHT_3, radius=0.08)
+        rect(s, 9.55, yy + 0.09, 1.85 * float(score.replace("≈", "")), 0.16, fill=col, radius=0.08)
+        text(s, 11.55, yy, 0.8, 0.38, score, size=11.5, bold=True, color=col, align="r", anchor="m")
+        yy += 0.58
+    # Isolation Forest strip
+    rect(s, 0.62, 6.03, 12.09, 0.68, fill="EEEFF8", radius=0.12)
+    text(s, 0.88, 6.1, 2.35, 0.5, "ISOLATION FOREST", size=9, bold=True, color=VIOLET, anchor="m")
+    text(s, 3.0, 6.1, 2.0, 0.5, "37 / 375 flagged", size=10.5, bold=True, color=INK, anchor="m")
+    text(s, 5.03, 6.1, 3.4, 0.5, "35 mapped · 18 low oxygen · 17 fever", size=9.8, color=INK, anchor="m")
+    text(s, 8.62, 6.1, 1.7, 0.5, "2 unresolved", size=9.8, bold=True, color=SLATE, anchor="m")
+    pill(s, 10.55, 6.19, "≈10% flagged", fill=VIOLET, size=7.3, w=1.75, h=0.28)
+    text(s, 0.65, 6.77, 11.9, 0.2,
+         "Offline dataset metrics only — not clinical validation or a claim of real-world sensitivity.",
+         size=8.7, color=SLATE, italic=True)
+    footer(s, "AI / ML", "Preliminary model evaluation", 10)
+    notes(s, """
+Use these as preliminary offline results, not a clinical claim. The activity classifier was evaluated on 375 held-out readings: 94% accuracy and 0.94 macro F1. Sleeping and resting are approximately 0.99 F1, walking 0.97, running 0.89 and exercising 0.85.
+On the same-size held-out set, the Isolation Forest flagged 37 readings (about 9.9%). The condition mapping assigned 35 a cause: 18 low-oxygen and 17 fever; two remained unexplained.
+Before presenting externally, reproduce these metrics from the exact split, verify no leakage between train and test, and state that the dataset evaluation is not an on-body or clinical validation study.""")
+    register(10, "Model results", """
+Light canvas. Left dark metric panel with 39 pt 94% accuracy and 34 pt 0.94 macro F1. Right white panel with four per-class F1 bars. Bottom lavender strip reports Isolation Forest counts (37/375 flagged, 35 mapped, 18 low oxygen, 17 fever, 2 unresolved). A small italic caveat says offline results are not clinical validation.
+""", "see notes", ["Accuracy and macro-F1 KPIs", "Per-class F1 bars", "Isolation Forest outcome strip", "Validation caveat"])
+
+
+def slide_equation_library(prs):
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    background(s, LIGHT)
+    title(s, "Equation library — documented, not learned", w=10.4,
+          sub="Transparent score logic complements the trained models; it does not replace them.")
+    pill(s, 10.2, 1.86, "Rules · pilot validation", fill=NAVY, size=7.5, w=2.45, h=0.31)
+    top = [
+        (0.62, "Stress index", "GSR arousal  +  HRV drop  +  resting-HR rise", "Combined signals; no single sensor decides alone.", VIOLET),
+        (4.74, "Core temperature", "Tcore ≈ gain × Tskin + offset", "Calibrated estimate from the skin-temperature reading.", CYAN),
+        (8.86, "Fever score", "Tcore  +  rate of rise  +  HR–temperature coupling", "Combines level, trend and physiological context.", AMBER),
+    ]
+    for x, head, formula, body, col in top:
+        rect(s, x, 2.42, 3.85, 1.68, fill=WHITE, line=LIGHT_3, radius=0.16)
+        rect(s, x, 2.42, 3.85, 0.09, fill=col, radius=0.045)
+        text(s, x + 0.24, 2.68, 3.35, 0.36, head, size=14, bold=True, color=INK)
+        text(s, x + 0.24, 3.08, 3.35, 0.46, formula, size=11.2, bold=True, color=col, line_spacing=1.05)
+        text(s, x + 0.24, 3.58, 3.35, 0.42, body, size=9.2, color=SLATE, line_spacing=1.1)
+    bottom = [
+        (1.72, "Hypoxic burden", "Accumulated desaturation over time", "Temporal accumulation filters single noisy dips.", INDIGO),
+        (6.98, "Fall signature", "Free-fall → impact (≥2.8 g) → tumble (≥2.4 rad/s) → stillness", "A sequence of motion cues, not an isolated acceleration peak.", PINK),
+    ]
+    for x, head, formula, body, col in bottom:
+        rect(s, x, 4.35, 4.65, 1.58, fill=WHITE, line=LIGHT_3, radius=0.16)
+        rect(s, x, 4.35, 4.65, 0.09, fill=col, radius=0.045)
+        text(s, x + 0.24, 4.6, 4.15, 0.34, head, size=14, bold=True, color=INK)
+        text(s, x + 0.24, 4.99, 4.15, 0.43, formula, size=11, bold=True, color=col, line_spacing=1.05)
+        text(s, x + 0.24, 5.46, 4.15, 0.34, body, size=9.2, color=SLATE, line_spacing=1.1)
+    text(s, 0.65, 6.32, 12.0, 0.35,
+         "Deterministic by design · formula definitions and thresholds remain subject to bench and on-body validation.",
+         size=9.2, color=SLATE, italic=True, align="c")
+    footer(s, "AI / ML", "Transparent health-score logic", 11)
+    notes(s, """
+These are interpretable score definitions, not learned weights: stress combines electrodermal arousal, HRV drop and resting-HR rise; core temperature estimates from skin temperature through a gain/offset calibration; fever combines level, rate of rise and HR-temperature coupling; hypoxic burden accumulates desaturation over time to ignore isolated noisy dips; fall logic requires a sequence of motion cues.
+The repository implements only part of this catalog today (for example, normalized stress, SpO2/fever risk features and local fall verification). Confirm each equation and threshold is wired, tested and clinically reviewed before describing the entire library as deployed.""")
+    register(11, "Equation library — documented, not learned", """
+Light canvas. Three compact white formula cards across the upper row (stress index, core-temperature estimate, fever score); two wider cards below (hypoxic burden and fall signature). Each has a colored top rule, bold name, large symbolic formula and one-line interpretation. Bottom caveat identifies validation status.
+""", "see notes", ["5 formula cards", "Deterministic-vs-learned distinction", "Validation caveat"])
+
+
+def slide_personal_calibration(prs):
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    background(s, NAVY)
+    title(s, "Personal calibration — learning\neach wearer’s baseline", dark=True, w=9.2,
+          sub="A rolling reference makes deviations personal without letting a crisis redefine normal.")
+    pill(s, 10.15, 1.86, "Pilot design", fill=CYAN, color=NAVY, size=7.5, w=2.25, h=0.31)
+    rect(s, 0.62, 2.35, 5.45, 1.3, fill=NAVY_2, radius=0.16)
+    label(s, 0.93, 2.56, 2.3, "EWMA update", color=CYAN, size=8.5)
+    text(s, 0.93, 2.88, 4.85, 0.48, "Baselineₜ = α · readingₜ + (1 − α) · Baselineₜ₋₁", size=15, bold=True,
+         color=WHITE, align="c", anchor="m")
+    # Baseline channels
+    text(s, 0.68, 3.92, 5.3, 0.35, "Each valid reading can refine these resting-state references:",
+         size=10, color=MUTED_D)
+    chip_row(s, 0.68, 4.37, [("HR", VIOLET), ("HRV", INDIGO), ("GSR", "0F9F6E"),
+                             ("Temperature", "D96D36"), ("SpO₂", "1676B8")], max_x=6.0, size=8.5)
+    # safeguards
+    label(s, 6.55, 2.36, 5.6, "Three safeguards", color=CYAN, size=8.5)
+    safeguards = [
+        ("Automatic", "Recent valid readings carry more weight; one spike cannot reset the baseline.", CYAN),
+        ("Crisis-gated", "Exclude readings during an active alert so illness is not learned as normal.", PINK),
+        ("Caregiver-anchored", "A reference-device measurement can correct a personal sensor offset.", MINT),
+    ]
+    y = 2.76
+    for head, body, col in safeguards:
+        rect(s, 6.55, y, 6.16, 0.78, fill=NAVY_2, radius=0.12)
+        rect(s, 6.55, y, 0.07, 0.78, fill=col, radius=0.035)
+        text(s, 6.82, y + 0.1, 1.8, 0.28, head, size=11.5, bold=True, color=col)
+        text(s, 8.65, y + 0.08, 3.78, 0.56, body, size=9.5, color=MUTED_D, anchor="m", line_spacing=1.12)
+        y += 0.9
+    # confidence maturity line
+    text(s, 0.68, 5.38, 2.2, 0.32, "BASELINE CONFIDENCE", size=8.5, bold=True, color=MUTED_D, spacing=1.1)
+    rect(s, 2.65, 5.49, 4.0, 0.12, fill=NAVY_3, radius=0.06)
+    rect(s, 2.65, 5.49, 2.55, 0.12, fill=CYAN, radius=0.06)
+    text(s, 2.65, 5.72, 1.5, 0.28, "warming_up", size=9, color=MUTED_D)
+    text(s, 5.15, 5.72, 1.5, 0.28, "active", size=9, bold=True, color=CYAN, align="r")
+    rect(s, 7.05, 5.46, 5.66, 0.68, fill="262552", radius=0.13)
+    text(s, 7.32, 5.48, 5.12, 0.6,
+         "Status progresses with reliable wear time; clinical floors remain universal.",
+         size=10, color=WHITE, anchor="m", align="c")
+    text(s, 0.65, 6.42, 12.0, 0.3,
+         "Calibration is a target feature; validate update rate, exclusions and caregiver corrections before pilot use.",
+         size=8.9, color=MUTED_D, italic=True)
+    footer(s, "AI / ML", "Personalized reference signals", 12, dark=True)
+    notes(s, """
+Explain the EWMA intuitively: each new valid measurement nudges a personal reference, with recent readings weighted more heavily, rather than moving the baseline abruptly. Update HR, HRV, GSR, temperature and SpO2 references separately.
+The safeguards are important: active-alert readings are excluded; a caregiver can anchor calibration using a reference device; and a confidence state stays warming_up until enough reliable wear data exist. Fixed clinical floors are never calibrated away.
+Implementation status: this calibration policy is not yet wired into the current pipeline.py runtime. Present it as a pilot design/roadmap capability until the update loop, gating, persistence and tests are implemented.""")
+    register(12, "Personal calibration — building each wearer’s baseline", """
+Dark canvas. Left: EWMA formula panel and five baseline-channel chips, plus warming_up-to-active confidence bar. Right: three stacked safeguard cards (automatic, crisis-gated, caregiver-anchored) and a statement that clinical floors remain universal. Cyan “PILOT DESIGN” pill and bottom validation caveat.
+""", "see notes", ["EWMA formula", "Five baseline channels", "Three safeguards", "Confidence progression"])
+
+
+def slide_detection_tiers(prs):
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    background(s, LIGHT)
+    title(s, "Three independent detection tiers", w=9.6,
+          sub="Activity informs context; any one safety path can raise an alert.")
+    pill(s, 10.0, 1.86, "Target alert policy", fill=NAVY, size=7.5, w=2.55, h=0.31)
+    # Activity context node
+    rect(s, 4.72, 2.22, 3.9, 0.72, fill=NAVY, radius=0.14)
+    label(s, 4.98, 2.31, 1.65, "Context", color=CYAN, size=7.5)
+    text(s, 6.15, 2.28, 2.15, 0.48, "Activity classifier", size=14, bold=True, color=WHITE, anchor="m")
+    # Branch connectors from context to three tiers
+    center_x = 6.67
+    hline(s, 2.58, 3.23, 8.18, color="A8A8B5", weight=1.4)
+    vline(s, center_x, 2.94, 0.29, color="A8A8B5", weight=1.4)
+    tiers = [
+        (0.62, "01", "Clinical floors", "Fixed medical limits", "SpO₂ <90% · core temp ≥37.8°C\nFall impact ≥2.8 g", "1676B8"),
+        (4.76, "02", "Personal σ-rules", "Per-activity baseline", "Deviation from the wearer’s\ncalibrated activity baseline", "0F9F6E"),
+        (8.90, "03", "Trained ML model", "Isolation Forest", "23-feature anomaly score\nwith activity as an input", "D96D36"),
+    ]
+    card_y, card_w, card_h = 3.48, 3.82, 1.58
+    for x, num, head, sub, body, col in tiers:
+        vline(s, x + card_w / 2, 3.23, 0.25, color="A8A8B5", weight=1.25)
+        rect(s, x, card_y, card_w, card_h, fill=WHITE, line=LIGHT_3, radius=0.16)
+        rect(s, x, card_y, card_w, 0.09, fill=col, radius=0.045)
+        disc(s, x + 0.34, card_y + 0.39, 0.36, col, num, size=8.5)
+        text(s, x + 0.62, card_y + 0.2, 2.95, 0.34, head, size=13.4, bold=True, color=INK)
+        text(s, x + 0.62, card_y + 0.55, 2.95, 0.27, sub, size=9.2, bold=True, color=col)
+        text(s, x + 0.24, card_y + 0.98, card_w - 0.48, 0.47, body, size=9.1, color=SLATE, line_spacing=1.1)
+    # OR convergence and alert node
+    for x in (2.53, 6.67, 10.81):
+        vline(s, x, 5.06, 0.31, color="A8A8B5", weight=1.3)
+    hline(s, 2.53, 5.37, 8.28, color="A8A8B5", weight=1.3)
+    vline(s, center_x, 5.37, 0.16, color="A8A8B5", weight=1.3)
+    rect(s, 4.52, 5.53, 4.3, 0.7, fill=VIOLET, radius=0.16)
+    text(s, 4.72, 5.58, 3.9, 0.56, "OR gate · any one tier fires → alert", size=15, bold=True, color=WHITE, align="c", anchor="m")
+    text(s, 0.65, 6.42, 12.0, 0.28,
+         "Safety principle: personal calibration cannot suppress a clinical floor. Target architecture · thresholds and independent paths require validation.",
+         size=8.6, color=SLATE, italic=True, align="c")
+    footer(s, "AI safety", "Independent detection paths", 13)
+    notes(s, """
+Describe the intended policy as three independent paths. Tier 1 is a fixed clinical floor (examples supplied: SpO2 under 90%, estimated core temperature at or above 37.8°C, fall impact at or above 2.8 g); personalization cannot disable it. Tier 2 evaluates deviation from the wearer’s per-activity baseline. Tier 3 is the Isolation Forest as a third opinion with activity in its feature vector. Any one tier should be sufficient to alert; OR, never AND.
+Important implementation caveat: the current pipeline.py does not yet implement this exact independent OR policy. Today the IF anomaly gates the condition mapper, and IF/LSTM labels are combined into a confidence ensemble. Treat this slide as target architecture until the code is changed and threshold behavior is tested. Clinical limits and sensor-derived core temperature also require validation.""")
+    register(13, "Three independent detection tiers", """
+Light canvas. Activity-classifier context node at top branches to three colored tier cards: fixed clinical floors, personal per-activity sigma rules, and Isolation Forest. The three paths converge at a violet OR gate (“any one tier fires → alert”). Small “target alert policy” badge and bottom validation caveat.
+""", "see notes", ["Activity-context node", "Three detection-tier cards", "OR gate", "Validation caveat"])
 
 def slide_safety(prs):
     s = prs.slides.add_slide(prs.slide_layouts[6])
@@ -687,12 +952,12 @@ def slide_safety(prs):
         y += 0.86
     text(s, MARGIN, 6.55, 7, 0.4, "Escalation thresholds, consent flows and failure handling are validated in the pilot before any public launch.",
          size=9.5, color=MUTED_D, italic=True)
-    footer(s, "Safety", "Designed emergency escalation", 8, dark=True)
+    footer(s, "Safety", "Designed emergency escalation", 14, dark=True)
     notes(s, """
 Tell it as a story: the wearer falls in the kitchen at 11 a.m. The band feels a 4 g impact followed by four seconds without movement while lying down. The screen lights up: "Are you OK?" — 30 seconds to press the button. She cannot. The band publishes an emergency packet with her vitals, the time and a maps link; the backend notifies her daughter; the band shows HELP REQUESTED until someone acknowledges.
 Two design choices matter to investors: the wearer is asked first (dignity and fewer false alarms), and the whole loop is deterministic and testable — no model in the critical path.
 Be transparent about what is not yet validated: thresholds, consent and failure handling will be tuned in the pilot.""")
-    register(8, "Safety workflow", """
+    register(14, "Safety workflow", """
 Dark canvas with a full-height lifestyle photo on the right 41% (elder_home.jpg) fading into navy via a 2.2 in gradient. Left: two-line headline, cyan tracked sub-label, a vertical timeline of five numbered discs (cyan → indigo → violet → amber → pink) each with a 13.5 pt step name and 10.5 pt description. Italic caveat at the bottom. Footer "SAFETY | DESIGNED EMERGENCY ESCALATION".""",
              "see notes", ["Vertical 5-step timeline", "Photo with gradient fade", "Caveat line"])
 
@@ -717,12 +982,12 @@ def slide_app(prs):
         text(s, 8.0, y - 0.02, 4.7, 0.7, body, size=11.5, color=INK, line_spacing=1.2)
         hline(s, 6.75, y + 0.68, 5.9)
         y += 0.8
-    footer(s, "Product", "Caregiver app and dashboard", 9)
+    footer(s, "Product", "Caregiver app and dashboard", 15)
     notes(s, """
 The buyer is usually the adult child; the wearer is the parent. The app is built for the buyer's anxiety: a green circle that says "all good" is the feature people pay for every month.
 Today: a live web dashboard already consumes the pipeline output; the mobile app is the next build item. Show the dashboard live if the demo network allows it.
 Alert grading (low / medium / high / critical) maps directly to what the band shows on the wrist, so family and wearer always see the same truth.""")
-    register(9, "Caregiver experience", """
+    register(15, "Caregiver experience", """
 Light canvas. Left: rounded photo (caregiver_app.jpg, 5.3 × 4.35 in). Right: violet tracked label and five rows — a thin coloured bar, 10 pt uppercase feature name (LIVE / TRENDS / ADVICE / ALERTS / SAFETY) and 11.5 pt description — separated by hairlines. Footer "PRODUCT | CAREGIVER APP AND DASHBOARD".""",
              "see notes", ["caregiver_app.jpg rounded", "5 feature rows"])
 
@@ -762,12 +1027,12 @@ def slide_traction(prs):
         text(s, x - 0.2, y + 0.3, 1.9, 0.3, name, size=12, bold=True, color=WHITE if now else MUTED_D)
         text(s, x - 0.2, y + 0.6, 1.9, 0.6, desc, size=9.5, color=MUTED_D, line_spacing=1.15)
         x += 3.7
-    footer(s, "Traction", "Prototype status", 10, dark=True)
+    footer(s, "Traction", "Prototype status", 16, dark=True)
     notes(s, """
 No revenue yet — say it plainly — but the whole stack exists: data and trained models, an inference service, a live dashboard, a cloud broker, and firmware for the complete sensor stack including the safety workflow.
 That de-risks the next step: the pilot is an integration and validation exercise, not an invention exercise.
 Firmware verification is host-side so far (compiles against the real libraries; 87 behavioural checks). On-body validation and battery-life measurements come from the bench phase starting now.""")
-    register(10, "Traction", """
+    register(16, "Traction", """
 Dark canvas. Four KPI tiles (2.85 × 2.35 in, navy-2 with coloured top bars): 34 pt figure, tracked unit label, 10 pt detail. Below: a horizontal maturity timeline (Concept → Prototype → Pilot → Launch) with a highlighted cyan "WE ARE HERE" node on Prototype. Footer "TRACTION | PROTOTYPE STATUS".""",
              "see notes", ["4 KPI tiles", "Maturity timeline"])
 
@@ -804,13 +1069,13 @@ def slide_market(prs):
         text(s, x, 5.85, 1.5, 0.75, big, size=22, bold=True, color=WHITE, font=FONT_HEAD, anchor="m")
         text(s, x + 1.5, 5.85, 2.3, 0.75, small, size=9.5, color=MUTED_D, anchor="m", line_spacing=1.15)
         x += 4.0
-    footer(s, "Market", "Entry wedge and expansion", 11)
+    footer(s, "Market", "Entry wedge and expansion", 17)
     notes(s, """
 Focus wins: the first commercial wedge is independent aging in Egypt — 9.3 million people over 60 (8.8 % of the population, CAPMAS 2024), most living at home, with adult children who work.
 The buyer and the wearer are different people; pricing, onboarding and the app are designed for the buyer, the band for the wearer.
 Global context: WHO estimates 684 000 fatal falls a year and 37.3 million falls needing medical attention; over 80 % of fall deaths happen in low- and middle-income countries — exactly the markets premium smartwatches under-serve.
 TAM/SAM/SOM in currency terms is deliberately left for the appendix until pilot data supports a defensible price point.""")
-    register(11, "Market", """
+    register(17, "Market", """
 Light canvas. Three white rounded segment cards (3.85 × 3.1 in) each with a coloured tag pill (FIRST WEDGE / THE BUYER / EXPANSION), an 18 pt segment name, 11 pt description and a coloured key fact under a hairline. Bottom: navy strip with three 22 pt WHO statistics and 9.5 pt captions. Footer "MARKET | ENTRY WEDGE AND EXPANSION".""",
              "see notes", ["3 segment cards", "WHO statistics strip"])
 
@@ -843,12 +1108,12 @@ def slide_business(prs):
     table(s, 7.5, 2.7, [1.45, 1.55, 2.2], rows, header_fill=NAVY, row_h=0.46, head_h=0.4, size=9.5)
     text(s, 7.5, 5.35, 5.2, 0.7, "Assumptions to validate: willingness to pay in EGP, churn after the first alert, and B2B2C reimbursement partners.",
          size=9.5, color=SLATE, italic=True, line_spacing=1.2)
-    footer(s, "Business", "Commercial model", 12)
+    footer(s, "Business", "Commercial model", 18)
     notes(s, """
 Three streams, in order of maturity: a device sale to get the band on the wrist, a family subscription that carries the recurring value (insight, history, escalation), and B2B2C channels where an insurer or care provider pays per seat.
 Unit economics are hypotheses: the prototype BOM with off-the-shelf modules is roughly 45–60 dollars; a custom PCB at a few thousand units should bring it under 30. Price points are stated in dollar equivalents but will be set in EGP after the pilot's willingness-to-pay interviews.
 Do not defend the numbers — defend the method: the pilot is designed to replace every assumption on this slide with measured data.""")
-    register(12, "Business model", """
+    register(18, "Business model", """
 Light canvas, two columns divided by a hairline. Left: "REVENUE STREAMS" label and three numbered rows (violet / indigo / green discs, 14 pt name, 10.5 pt description). Right: "UNIT ECONOMICS — WORKING ASSUMPTIONS" label, a 3-column navy-header table (BOM, device price, subscription, gross margin) and an italic assumptions line. Footer "BUSINESS | COMMERCIAL MODEL".""",
              "see notes", ["3 revenue streams", "Unit-economics table", "Assumptions caveat"])
 
@@ -897,12 +1162,12 @@ def slide_competition(prs):
     rect(s, x0 + 2.35, ly - 0.015, 0.14, 0.03, fill=NAVY_3); text(s, x0 + 2.6, ly - 0.12, 1.2, 0.25, "None", size=9, color=MUTED_D)
     text(s, 7.0, ly - 0.15, 5.7, 0.4, "Premium watches do parts of this at 5–10× the price and assume a paired smartphone; pendants react but never predict.",
          size=9.5, color=MUTED_D, italic=True, align="r", line_spacing=1.15)
-    footer(s, "Positioning", "Why we win", 13, dark=True)
+    footer(s, "Positioning", "Why we win", 19, dark=True)
     notes(s, """
 Fitness bands are cheap but blind to safety; premium smartwatches have fall detection but cost several hundred dollars, assume a paired smartphone on the wearer, and are not designed around a caregiver; medical alert pendants react to a button press but never predict anything.
 We sit in the gap: continuous multi-signal vitals, prediction, on-device fall verification and caregiver escalation — at a price a family in Cairo can pay, and without the wearer needing a smartphone.
 Keep competitor claims general and fair; if asked about a specific brand, compare on price, caregiver features and phone dependence.""")
-    register(13, "Competitive positioning", """
+    register(19, "Competitive positioning", """
 Dark canvas. A capability matrix: 4.9 in capability column + four 1.75–1.95 in competitor columns; the NeuroLink column has a translucent violet highlight. Marks are shapes: filled disc = full (cyan in our column), ring = partial, short dash = none. Legend bottom-left, italic takeaway bottom-right. Footer "POSITIONING | WHY WE WIN".""",
              "see notes", ["Capability matrix 6 × 4", "Legend", "Takeaway line"])
 
@@ -929,11 +1194,11 @@ def slide_roadmap(prs):
         x += cw + gap
     text(s, MARGIN, 6.4, 12, 0.4, "Key risks we track: clinical validity of wrist PPG · false-alarm fatigue · battery life with GPS · data privacy and consent · hardware supply.",
          size=9.5, color=SLATE, italic=True)
-    footer(s, "Roadmap", "Validation path", 14)
+    footer(s, "Roadmap", "Validation path", 20)
     notes(s, """
 Four phases, each with a measurable exit: bench accuracy against reference devices; a 30–50 household pilot measuring detection reliability, false-alarm rate and willingness to pay; a safety and compliance phase that turns the workflow into SOPs and assesses the regulatory pathway; then scale with care partners in Egypt and B2B2C pilots.
 Name the risks before investors do: wrist PPG accuracy, alarm fatigue, battery life with GPS, privacy and consent, supply chain. Each has an owner and a test in the plan.""")
-    register(14, "Roadmap", """
+    register(20, "Roadmap", """
 Light canvas. A horizontal timeline with four numbered coloured nodes over four white phase cards (2.85 × 3.3 in): 15 pt phase name, tracked date label, three dash-bullets at 10.5 pt. Italic key-risk line at the bottom. Footer "ROADMAP | VALIDATION PATH".""",
              "see notes", ["Timeline + 4 phase cards", "Risk line"])
 
@@ -959,11 +1224,11 @@ def slide_team(prs):
         x += cw + gap
     text(s, MARGIN, 6.2, 12, 0.4, "Replace the bracketed placeholders with names, photos and one proof point each (previous product shipped, publication, clinical role).",
          size=9.5, color=MUTED_D, italic=True)
-    footer(s, "Team", "Who is building it", 15, dark=True)
+    footer(s, "Team", "Who is building it", 21, dark=True)
     notes(s, """
 One proof point per person — what each has shipped or published — beats a list of titles. Highlight the complementary split: embedded/product, AI/data, clinical, growth.
 State the open seats as a strength: a geriatrics advisor and a partnerships lead are being recruited for the pilot phase, and part of the raise funds them.""")
-    register(15, "Team", """
+    register(21, "Team", """
 Dark canvas. Four navy-2 cards (2.85 × 3.5 in) with a 0.9 in coloured initials disc, 14 pt name, 10 pt coloured role and 10 pt description. Two cards are marked "recruiting". Italic instruction line for the founders to fill in. Footer "TEAM | WHO IS BUILDING IT".""",
              "see notes", ["4 member cards (placeholders)"])
 
@@ -1000,12 +1265,12 @@ def slide_ask(prs):
         text(s, x, 6.22, w, 0.3, f"{int(share * 100)}%  {name}", size=8.5, color=MUTED_D)
         x += w
     text(s, MARGIN, 6.6, 6.2, 0.3, "[founder@neurolinkwear.example]  ·  [+20 1xx xxx xxxx]  ·  github.com/DiaaSalah57/Neuro-Link-Wear_SmartBand", size=8.5, color=MUTED_D)
-    footer(s, "Next step", "Pilot, validation, funding", 16, dark=True)
+    footer(s, "Next step", "Pilot, validation, funding", 22, dark=True)
     notes(s, """
 Close on the mission line, then be concrete: three asks — pilot partners, clinical validation support, and a pre-seed round sized for 18 months (fill in the amount before presenting).
 Use of funds is indicative: roughly 40 % hardware and compliance, 35 % pilot and validation, 25 % team and app.
 End with the next step you want from this room: an introduction to a care provider, a pilot site, or a follow-up meeting on the round.""")
-    register(16, "The ask / closing", """
+    register(22, "The ask / closing", """
 Dark canvas mirroring the cover: hero render on the right 50% fading into navy. Left: cyan accent bar, 30 pt two-line mission headline, "THE ASK" label with three items (violet bar, 13.5 pt heading, 10.5 pt detail), an indicative use-of-funds bar (40 / 35 / 25) and a contact line with placeholders. Footer "NEXT STEP | PILOT, VALIDATION, FUNDING".""",
              "see notes", ["Mission headline", "3 asks", "Use-of-funds bar", "Contact placeholders"])
 
@@ -1014,8 +1279,9 @@ Dark canvas mirroring the cover: hero render on the right 50% fading into navy. 
 # 5. BUILD + COMPANION DOCUMENT
 # ──────────────────────────────────────────────────────────────────────────────
 SLIDES = [slide_cover, slide_problem, slide_solution, slide_hardware, slide_architecture, slide_edge,
-          slide_ai, slide_safety, slide_app, slide_traction, slide_market, slide_business,
-          slide_competition, slide_roadmap, slide_team, slide_ask]
+          slide_ai, slide_ai_architecture, slide_model_roles, slide_model_results, slide_equation_library,
+          slide_personal_calibration, slide_detection_tiers, slide_safety, slide_app, slide_traction,
+          slide_market, slide_business, slide_competition, slide_roadmap, slide_team, slide_ask]
 
 
 def build(out_path: str, specs_path: str | None):
@@ -1033,7 +1299,7 @@ def write_specs(path: str, deck_name: str):
     lines = [
         "# NeuroLink Wear — pitch deck: layout specs & speaker notes",
         "",
-        f"Generated by `build_deck.py` → `{os.path.basename(deck_name)}` (16 slides, 16:9, 13.333 × 7.5 in).",
+        f"Generated by `build_deck.py` → `{os.path.basename(deck_name)}` (22 slides, 16:9, 13.333 × 7.5 in).",
         "",
         "## Design system",
         "",
