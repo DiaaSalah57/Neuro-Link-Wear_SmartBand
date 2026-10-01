@@ -1,8 +1,8 @@
 /**
  * NeuroLink Wear — Settings: appearance, account & session, system info.
  */
-import { api, auth } from '../api.js?v=20261001-7';
-import { $, $$, esc, icons, toast, confirmDialog } from '../ui.js?v=20261001-7';
+import { api, auth } from '../api.js?v=20261001-4';
+import { $, $$, esc, icons, toast, confirmDialog } from '../ui.js?v=20261001-4';
 
 export default {
   async render(root) {
@@ -16,13 +16,12 @@ export default {
       </div>
 
       <div class="grid cols-2">
-        <div class="stack">
         <div class="card">
           <div class="card-head"><h3>${icons.sun} Appearance</h3></div>
           <div class="card-body">
             <div class="flex-between">
               <div>
-                <strong style="display:block;font-size:calc(13.5px * var(--fs))">Dark mode</strong>
+                <strong style="display:block;font-size:13.5px">Dark mode</strong>
                 <small class="muted">Switch between the light clinical theme and the dark night theme.</small>
               </div>
               <input type="checkbox" class="switch" id="set-theme" ${document.documentElement.dataset.theme === 'dark' ? 'checked' : ''}>
@@ -30,41 +29,12 @@ export default {
             <div class="divider"></div>
             <div class="flex-between">
               <div>
-                <strong style="display:block;font-size:calc(13.5px * var(--fs))">Density</strong>
+                <strong style="display:block;font-size:13.5px">Density</strong>
                 <small class="muted">Comfortable spacing for medical review sessions.</small>
               </div>
               <span class="badge neutral">comfortable</span>
             </div>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-head"><h3>${icons.settings} Text size and language</h3></div>
-          <div class="card-body">
-            <div class="flex-between">
-              <div>
-                <strong style="display:block;font-size:calc(13.5px * var(--fs))">Text size</strong>
-                <small class="muted">Makes every label, number and alert easier to read.</small>
-              </div>
-              <div class="segmented" role="group" aria-label="Text size">
-                <button type="button" data-font-size="normal">Normal</button>
-                <button type="button" data-font-size="large">Large</button>
-                <button type="button" data-font-size="xlarge">Extra large</button>
-              </div>
-            </div>
-            <div class="divider"></div>
-            <div class="flex-between">
-              <div>
-                <strong style="display:block;font-size:calc(13.5px * var(--fs))">Language</strong>
-                <small class="muted">Choose the language of the dashboard — English or العربية.</small>
-              </div>
-              <div class="segmented" role="group" aria-label="Language">
-                <button type="button" data-lang="en">English</button>
-                <button type="button" data-lang="ar">العربية</button>
-              </div>
-            </div>
-          </div>
-        </div>
         </div>
 
         <div class="card">

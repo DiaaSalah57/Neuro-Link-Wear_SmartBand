@@ -38,7 +38,7 @@ const fallbackHTML = (lat, lng, label) => `
       <div class="pin">📍</div>
       <h4 style="margin:10px 0 4px;color:var(--text)">${label || 'Wearer location'}</h4>
       <div class="gps-pill" style="margin:6px auto;display:inline-flex">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
-      <p class="muted" style="margin-top:8px;font-size:calc(12px * var(--fs))">Map tiles could not be loaded (offline?).<br>GPS coordinates are shown above and stay accurate.</p>
+      <p class="muted" style="margin-top:8px;font-size:12px">Map tiles could not be loaded (offline?).<br>GPS coordinates are shown above and stay accurate.</p>
     </div>
   </div>`;
 
@@ -148,7 +148,7 @@ export async function createMap(containerId, opts = {}) {
   });
   const fallIcon = L.divIcon({
     className: '',
-    html: `<div style="width:24px;height:24px;border-radius:50%;background:#170c5e;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);display:grid;place-items:center;color:#fff;font-size:calc(12px * var(--fs))">⚠</div>`,
+    html: `<div style="width:24px;height:24px;border-radius:50%;background:#170c5e;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);display:grid;place-items:center;color:#fff;font-size:12px">⚠</div>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
   });
