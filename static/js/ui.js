@@ -2,6 +2,9 @@
  * NeuroLink Wear — UI toolkit: DOM helpers, icons, toasts, modals,
  * skeleton loaders and empty states.
  */
+import { localeTag } from './i18n.js?v=20261001-7';
+
+export { localeTag };
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -49,12 +52,12 @@ export const icons = {
 export const fmtTime = (ts) => {
   if (!ts) return '—';
   const d = new Date(ts);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString(localeTag(), { hour: '2-digit', minute: '2-digit' });
 };
 export const fmtDateTime = (ts) => {
   if (!ts) return '—';
   const d = new Date(ts);
-  return d.toLocaleString([], {
+  return d.toLocaleString(localeTag(), {
     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 };
@@ -69,11 +72,11 @@ export const fmtRelative = (ts) => {
 };
 export const fmtDate = (ts) => {
   if (!ts) return '—';
-  return new Date(ts).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  return new Date(ts).toLocaleDateString(localeTag(), { weekday: 'short', month: 'short', day: 'numeric' });
 };
 export const fmtNum = (n, digits = 0) =>
   (n === null || n === undefined || Number.isNaN(n)) ? '—'
-    : Number(n).toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+    : Number(n).toLocaleString(localeTag(), { maximumFractionDigits: digits, minimumFractionDigits: digits });
 
 export const severityOf = (sev) => ({
   critical: 'critical', high: 'high', medium: 'medium', low: 'low',
@@ -170,7 +173,7 @@ export function confirmDialog(title, body, confirmLabel = 'Delete') {
     let decided = false;
     openModal({
       title,
-      body: `<p class="muted" style="font-size:13.5px">${body}</p>`,
+      body: `<p class="muted" style="font-size:calc(13.5px * var(--fs))">${body}</p>`,
       footer: `
         <button class="btn ghost" data-modal-close>Cancel</button>
         <button class="btn danger" id="confirm-yes">${confirmLabel}</button>`,

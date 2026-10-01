@@ -4,11 +4,11 @@
  * personalized health thresholds, patient profile, (admin) team users
  * and the calibration lab (equation-based AI baselines).
  */
-import { api, auth } from '../api.js?v=20261001-4';
+import { api, auth } from '../api.js?v=20261001-7';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, confirmDialog,
-  emptyState, skeletonLines, fmtRelative,
-} from '../ui.js?v=20261001-4';
+  emptyState, skeletonLines, fmtRelative, localeTag,
+} from '../ui.js?v=20261001-7';
 
 let activeTab = 'contacts';
 const isAdmin = () => auth.user && auth.user.role === 'admin';
@@ -87,7 +87,7 @@ async function renderContacts(box) {
   }
   box.innerHTML = `
     <div class="flex-between" style="margin-bottom:14px">
-      <div class="muted" style="font-size:12.5px">${contacts.length} saved · priority order controls the dispatch sequence</div>
+      <div class="muted" style="font-size:calc(12.5px * var(--fs))">${contacts.length} saved · priority order controls the dispatch sequence</div>
       <button class="btn primary sm" id="add-contact">${icons.plus} Add contact</button>
     </div>
     <div class="card table-wrap">
@@ -99,7 +99,7 @@ async function renderContacts(box) {
           ${contacts.map((c) => `
             <tr data-id="${c.id}">
               <td><span class="badge ${c.priority === 1 ? 'high' : 'neutral'}">P${c.priority}</span></td>
-              <td><strong>${esc(c.name)}</strong>${c.notes ? `<div class="muted" style="font-size:11.5px">${esc(c.notes)}</div>` : ''}</td>
+              <td><strong>${esc(c.name)}</strong>${c.notes ? `<div class="muted" style="font-size:calc(11.5px * var(--fs))">${esc(c.notes)}</div>` : ''}</td>
               <td>${esc(c.relationship)}</td>
               <td class="mono">${esc(c.phone)}</td>
               <td>${c.can_dispatch ? '<span class="badge ok">enabled</span>' : '<span class="badge neutral">off</span>'}</td>
@@ -207,7 +207,7 @@ async function renderDevices(box) {
   const devices = await api.devices().catch(() => []);
   box.innerHTML = `
     <div class="flex-between" style="margin-bottom:14px">
-      <div class="muted" style="font-size:12.5px">Manage paired NeuroLink Wear bands and live device status.</div>
+      <div class="muted" style="font-size:calc(12.5px * var(--fs))">Manage paired NeuroLink Wear bands and live device status.</div>
       ${isAdmin() ? `<button class="btn primary sm" id="add-device">${icons.plus} Pair device</button>` : '<span class="badge purple">read-only · admin manages devices</span>'}
     </div>
     <div class="grid cols-2">
@@ -219,7 +219,7 @@ async function renderDevices(box) {
                 <div class="vital-icon" style="background:var(--accent-soft);color:var(--accent)">${icons.watch}</div>
                 <div>
                   <strong>${esc(d.name)}</strong>
-                  <div class="muted" style="font-size:11.5px">${esc(d.model)} · SN ${esc(d.serial)} · FW ${esc(d.firmware)}</div>
+                  <div class="muted" style="font-size:calc(11.5px * var(--fs))">${esc(d.model)} · SN ${esc(d.serial)} · FW ${esc(d.firmware)}</div>
                 </div>
               </div>
               <span class="badge ${d.online ? 'ok' : d.status === 'paired' ? 'medium' : 'neutral'}">${d.online ? 'online' : esc(d.status)}</span>
@@ -288,7 +288,7 @@ async function renderThresholds(box) {
         <button class="btn ghost sm" id="th-reset">Reset to recommended</button>
       </div>
       <div class="card-body">
-        <p class="muted" style="font-size:12.5px;margin-bottom:12px">
+        <p class="muted" style="font-size:calc(12.5px * var(--fs));margin-bottom:12px">
           Alerts fire the moment a live reading crosses these limits. Values are tailored to Abdelrahman's clinical profile
           (hypertension, mild COPD). Changes take effect on the next reading — typically within 2 seconds.
         </p>
@@ -336,7 +336,7 @@ async function renderThresholds(box) {
           <span class="badge medium">monitor</span>
         </div>
         <div class="row" style="margin-top:16px;justify-content:flex-end">
-          <span class="muted" id="th-saved" style="font-size:12px"></span>
+          <span class="muted" id="th-saved" style="font-size:calc(12px * var(--fs))"></span>
           <button class="btn primary" id="th-save">${icons.check} Save thresholds</button>
         </div>
       </div>
@@ -362,7 +362,7 @@ async function renderThresholds(box) {
     saveBtn.disabled = true;
     try {
       await api.updateThresholds(body);
-      $('#th-saved').textContent = `Saved · thresholds updated ${new Date().toLocaleTimeString()}`;
+      $('#th-saved').textContent = `Saved · thresholds updated ${new Date().toLocaleTimeString(localeTag())}`;
       toast('success', 'Thresholds saved', 'The detection engine is already using the new limits.');
     } catch (err) {
       toast('error', 'Save failed', err.message);
@@ -428,7 +428,7 @@ async function renderUsers(box) {
   const users = await api.users().catch(() => []);
   box.innerHTML = `
     <div class="flex-between" style="margin-bottom:14px">
-      <div class="muted" style="font-size:12.5px">Role-based access: admins manage the platform, caregivers manage the care workflow.</div>
+      <div class="muted" style="font-size:calc(12.5px * var(--fs))">Role-based access: admins manage the platform, caregivers manage the care workflow.</div>
       <button class="btn primary sm" id="add-user">${icons.plus} Add team member</button>
     </div>
     <div class="card table-wrap">
@@ -478,7 +478,7 @@ async function renderPatient(box) {
         <div class="row" style="align-items:center;margin-bottom:16px">
           <span class="avatar lg" style="background:${esc(p.avatar_color)}">${esc((p.name || 'AB').split(' ').map((x) => x[0]).slice(0, 2).join('').toUpperCase())}</span>
           <div>
-            <strong style="font-size:17px">${esc(p.name)}</strong>
+            <strong style="font-size:calc(17px * var(--fs))">${esc(p.name)}</strong>
             <div class="muted">${p.age} · ${esc(p.gender)} · ${esc(p.room)}</div>
           </div>
         </div>
@@ -536,7 +536,7 @@ async function renderCalibration(box) {
     const col = z >= 2 ? '#e5484d' : z >= 1 ? '#f5a623' : '#30a46c';
     return `<div class="cal-bar"><i style="display:block;height:100%;width:${w}%;background:${col};border-radius:4px"></i></div>`;
   };
-  const fmtWhen = (ts) => { try { return new Date(ts).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return '—'; } };
+  const fmtWhen = (ts) => { try { return new Date(ts).toLocaleString(localeTag(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return '—'; } };
 
   box.innerHTML = `
   <div class="panel">
@@ -569,7 +569,7 @@ async function renderCalibration(box) {
         </label>`).join('')}
     </div>
     <div class="row" style="justify-content:flex-end;margin-top:12px;gap:12px">
-      <span class="muted" style="font-size:12px">Manual values stop auto-updating until you change them.</span>
+      <span class="muted" style="font-size:calc(12px * var(--fs))">Manual values stop auto-updating until you change them.</span>
       <button class="btn ghost" id="cal-save">Save manual overrides</button>
     </div>
 
@@ -591,7 +591,7 @@ async function renderCalibration(box) {
       </label>
     </div>
     <div class="row" style="justify-content:flex-end;margin-top:12px;gap:12px">
-      <span class="muted" style="font-size:12px">Oral temp + band skin temp calibrates the personal skin→core offset.</span>
+      <span class="muted" style="font-size:calc(12px * var(--fs))">Oral temp + band skin temp calibrates the personal skin→core offset.</span>
       <button class="btn primary" id="cal-ref-add">Apply reference point</button>
     </div>
 

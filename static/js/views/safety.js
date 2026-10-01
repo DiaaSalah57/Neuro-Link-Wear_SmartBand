@@ -2,14 +2,14 @@
  * NeuroLink Wear — Safety & Emergency: live GPS map, incident timeline with
  * inactivity alerts, and one-click emergency contact dispatch.
  */
-import { api } from '../api.js?v=20261001-4';
-import { store } from '../store.js?v=20261001-4';
-import { onWS } from '../ws.js?v=20261001-4';
+import { api } from '../api.js?v=20261001-7';
+import { store } from '../store.js?v=20261001-7';
+import { onWS } from '../ws.js?v=20261001-7';
 import {
   $, $$, esc, icons, toast, fmtDateTime, fmtRelative, fmtTime,
   emptyState, skeletonCards, typeIcon, confirmDialog,
-} from '../ui.js?v=20261001-4';
-import { createMap } from '../map.js?v=20261001-4';
+} from '../ui.js?v=20261001-7';
+import { createMap } from '../map.js?v=20261001-7';
 
 let unsubWS = null;
 let mapCtl = null;
@@ -27,8 +27,8 @@ function timelineItem(a) {
         <div class="card-pad" style="padding:14px 16px">
           <div class="flex-between">
             <div class="row" style="gap:8px">
-              <span class="vital-icon" style="width:28px;height:28px;font-size:13px;background:var(--surface-3)">${typeIcon(a.type)}</span>
-              <strong style="font-size:13.5px">${esc(a.title)}</strong>
+              <span class="vital-icon" style="width:28px;height:28px;font-size:calc(13px * var(--fs));background:var(--surface-3)">${typeIcon(a.type)}</span>
+              <strong style="font-size:calc(13.5px * var(--fs))">${esc(a.title)}</strong>
             </div>
             <span class="badge ${a.severity}">${esc(a.severity)}</span>
           </div>
@@ -39,7 +39,7 @@ function timelineItem(a) {
             <span class="badge ${a.status}">${esc(a.status)}</span>
             ${a.lat ? `<span class="gps-pill" style="margin-left:6px">${icons.pin} ${a.lat.toFixed(4)}, ${a.lng.toFixed(4)}</span>` : ''}
           </div>
-          ${a.type === 'Inactivity' ? `<p class="muted" style="font-size:12.2px;margin-top:8px">${esc(a.explanation.split('.')[0])}.</p>` : ''}
+          ${a.type === 'Inactivity' ? `<p class="muted" style="font-size:calc(12.2px * var(--fs));margin-top:8px">${esc(a.explanation.split('.')[0])}.</p>` : ''}
           <div class="row" style="margin-top:10px">
             <button class="btn ghost sm" data-sa="map">${icons.map} Map</button>
             ${a.status === 'active' ? `<button class="btn warn sm" data-sa="ack">${icons.check} Acknowledge</button>` : ''}
@@ -145,12 +145,12 @@ async function refreshMap() {
 function openDispatchModal(alert) {
   api.contacts().then((contacts) => {
     const dispatchable = contacts.filter((c) => c.can_dispatch);
-    import('../ui.js?v=20261001-4').then(({ openModal, closeModal }) => {
+    import('../ui.js?v=20261001-7').then(({ openModal, closeModal }) => {
       openModal({
         title: 'Dispatch emergency contacts',
         wide: true,
         body: `
-          <p class="muted" style="font-size:13px;margin-bottom:12px">
+          <p class="muted" style="font-size:calc(13px * var(--fs));margin-bottom:12px">
             ${alert ? `Incident: <b>${esc(alert.title)}</b> · ` : ''}
             Choose who should be contacted. Each dispatch is logged in the incident timeline.
           </p>
@@ -170,7 +170,7 @@ function openDispatchModal(alert) {
             <textarea id="dispatch-message">NeuroLink Wear emergency dispatch: Abdelrahman may need immediate assistance${alert ? ` (${alert.title})` : ''}. Please respond. Live GPS is available on the Safety dashboard.</textarea>
           </div>
           <div class="row">
-            <span class="muted" style="font-size:12px">Channel:</span>
+            <span class="muted" style="font-size:calc(12px * var(--fs))">Channel:</span>
             <div class="segmented" id="dispatch-channel">
               <button class="active" data-ch="sms">SMS</button>
               <button data-ch="call">Phone call</button>
@@ -227,13 +227,13 @@ async function loadDispatchLog() {
     <div class="feed-item">
       <div class="feed-dot ${d.status === 'delivered' ? 'ok' : 'warn'}"></div>
       <div class="feed-content">
-        <strong style="font-size:12.8px">${esc(d.contact_name || 'Contact')} · ${esc(d.channel).toUpperCase()}</strong>
+        <strong style="font-size:calc(12.8px * var(--fs))">${esc(d.contact_name || 'Contact')} · ${esc(d.channel).toUpperCase()}</strong>
         <div class="meta">
           <span>${fmtRelative(d.ts)}</span>
           <span class="badge ${d.status === 'delivered' ? 'ok' : 'medium'}">${esc(d.status)}</span>
           ${d.sent_by ? `<span>by ${esc(d.sent_by)}</span>` : ''}
         </div>
-        <div class="muted" style="font-size:11.5px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:340px">${esc(d.message)}</div>
+        <div class="muted" style="font-size:calc(11.5px * var(--fs));margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:340px">${esc(d.message)}</div>
       </div>
     </div>`).join('');
 }
@@ -255,7 +255,7 @@ export default {
       <div class="notif-banner ok" id="safety-status" style="margin-bottom:16px">
         <div class="nb-body">
           <strong id="safety-status-title">Wearer status: <span class="text-ok">Safe</span></strong>
-          <div class="muted" style="font-size:12.5px" id="safety-status-sub">Band is streaming · fall detection armed · GPS updating every 20 s</div>
+          <div class="muted" style="font-size:calc(12.5px * var(--fs))" id="safety-status-sub">Band is streaming · fall detection armed · GPS updating every 20 s</div>
         </div>
         <button class="btn primary sm" id="safety-dispatch-btn">${icons.phone} Dispatch contacts</button>
       </div>
@@ -378,7 +378,7 @@ export default {
           <b>${resting ? 'monitoring…' : 'just now'}</b>
         </div>
         <div class="meter ${resting ? 'warn' : ''}"><i style="width:${resting ? 38 : 8}%"></i></div>
-        <p class="muted" style="font-size:11.8px;margin-top:10px">
+        <p class="muted" style="font-size:calc(11.8px * var(--fs));margin-top:10px">
           If no movement is detected for <b>90 minutes</b> during waking hours, an inactivity alert is raised and the
           care team is notified — silent falls and unattended rest periods are caught automatically.
         </p>`;

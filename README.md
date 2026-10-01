@@ -15,7 +15,8 @@ Real-time IoT health & safety monitoring for elderly individuals, their families
 | **Caregiver & Device Management** | Full CRUD for emergency contacts, wearable pairing with MQTT broker configuration (+ connection test), personalized health alert thresholds, wearer profile and role-based care-team users |
 | **Auth** | Role-based login (**Caregiver** vs **Admin**) with persistent HMAC-signed sessions (30 days) and PBKDF2 password hashing |
 | **UX** | Medical-grade responsive layout, sidebar navigation, sticky device-connectivity banner, quick SOS trigger, optimistic updates, skeleton loaders, empty states ("No incidents recorded today"), dark/light mode |
-| **Seed Data** | Elderly patient profile, 7 days of vitals time-series (full 24 h populated), a recent fall-detection log with GPS + dispatch history, sample AI health summaries, devices, contacts and thresholds — fully operational on first load |
+| **Language & accessibility** | One-tap **English ⇄ العربية** switch (full RTL layout, Arabic typography, Arabic dates) and a **text-size** control (100% / 118% / 138%) built for elderly readers — available on the sign-in screen *and* in the top bar, with explicit options in Settings → Appearance |
+| **Seed Data** | Accounts, wearer profile, paired band and emergency contacts are created on first boot. Telemetry, alerts and summaries come from the band over MQTT — nothing is fabricated. An optional demo dataset (7 days of vitals, incident history, GPS, dispatches) is available behind `NEUROLINK_SEED_DEMO=1` |
 
 ## Quick start
 
@@ -25,7 +26,30 @@ python3 -m venv .venv
 .venv/bin/python server.py            # http://localhost:8000
 ```
 
-The SQLite database (`data/neurolink.db`) is created and seeded **automatically on first boot**.
+The SQLite database (`data/neurolink.db`) is created on first boot. Demo accounts, the wearer profile,
+contacts and devices are seeded automatically; to also load the full demo dataset (7 days of vitals,
+incident history, AI summaries, dispatches) and to stream simulated telemetry, start it with:
+
+```bash
+NEUROLINK_SEED_DEMO=1 NEUROLINK_SIMULATOR=1 .venv/bin/python server.py   # fake data, for UI demos only
+```
+
+> `NEUROLINK_SEED_DEMO` only takes effect on a **fresh** database — delete `data/neurolink.db*` first
+> if you want to switch modes. It exists so the dashboard can be shown without hardware attached.
+
+Without those flags the dashboard runs **live-broker mode**: it subscribes to the paired band's MQTT
+topic (`neurolink/sensors/data` by default) and the vitals, alerts and AI summaries you see are the
+ones the hardware actually published. An empty dashboard therefore means the band has not published
+yet — not that something is broken.
+
+### What the Arabic translation covers
+
+Everything the care team reads is translated: navigation, all views, alerts, AI summary titles *and*
+the generated narrative bodies and recommendation bullets, chart legends and tooltips, contact roles
+and contact notes. Deliberately left as-is: **personal names**, phone numbers and email addresses,
+**brand names** (`NeuroLink Wear`, model numbers), measurement units (`bpm`, `µS`, `°C`, `ms`) and ML
+model names. Free-text a user types themselves (new notes, a new address) stays in whatever language
+it was written in — the dictionary translates content the app itself produces.
 
 ### Demo accounts
 
