@@ -2,14 +2,14 @@
  * NeuroLink Wear — Live Overview: realtime vitals, IMU motion, live feed,
  * device health and AI insight cards.
  */
-import { api } from '../api.js?v=20261001-7';
-import { store } from '../store.js?v=20261001-7';
-import { onWS } from '../ws.js?v=20261001-7';
+import { api } from '../api.js?v=20261001-8';
+import { store } from '../store.js?v=20261001-8';
+import { onWS } from '../ws.js?v=20261001-8';
 import {
   $, $$, esc, icons, toast, fmtTime, fmtRelative, fmtDateTime, fmtNum,
-  skeletonCards, emptyState, typeIcon,
-} from '../ui.js?v=20261001-7';
-import { sparkline } from '../charts.js?v=20261001-7';
+  skeletonCards, emptyState, typeIcon, deviceIsLive, fmtBattery,
+} from '../ui.js?v=20261001-8';
+import { sparkline } from '../charts.js?v=20261001-8';
 
 let unsubWS = null;
 let unsubStore = null;
@@ -281,6 +281,7 @@ export default {
 
     // Device card
     const dev = latest && latest.device;
+    const devLive = deviceIsLive(dev);
     $('#device-card-body').innerHTML = dev ? `
       <div class="row" style="align-items:flex-start">
         <div class="vital-icon" style="background:var(--accent-soft);color:var(--accent)">${icons.watch}</div>
@@ -288,11 +289,11 @@ export default {
           <strong style="display:block">${esc(dev.name)}</strong>
           <small class="muted">${esc(dev.model)} · SN ${esc(dev.serial)} · FW ${esc(dev.firmware)}</small>
         </div>
-        <span class="badge ${dev.online ? 'ok' : 'high'}">${dev.online ? 'Online' : 'Offline'}</span>
+        <span class="badge ${devLive ? 'ok' : 'high'}">${devLive ? 'Online' : 'Offline'}</span>
       </div>
       <div class="divider"></div>
-      <div class="flex-between"><span class="muted">Battery</span><b class="mono">${dev.battery}%${dev.charging ? ' ⚡' : ''}</b></div>
-      <div class="meter" style="margin:6px 0 12px"><i style="width:${dev.battery}%;background:${dev.battery < 20 ? 'var(--danger)' : 'var(--ok)'}"></i></div>
+      <div class="flex-between"><span class="muted">Battery</span><b class="mono">${fmtBattery(dev)}${devLive && dev.charging ? ' ⚡' : ''}</b></div>
+      <div class="meter" style="margin:6px 0 12px"><i style="width:${devLive ? Math.max(0, Math.min(100, Number(dev.battery) || 0)) : 0}%;background:${devLive && Number(dev.battery) < 20 ? 'var(--danger)' : 'var(--ok)'}"></i></div>
       <div class="flex-between"><span class="muted">Last sync</span><b>${fmtRelative(dev.last_seen)}</b></div>
     ` : emptyState({ icon: icons.watch, title: 'No device paired', body: 'Pair a NeuroLink band in Care Team → Devices.' });
 

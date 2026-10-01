@@ -19,7 +19,7 @@
  * dispatched after every change (the shell re-renders the active view so
  * locale-aware date/number formatting picks up the new locale).
  */
-import { exact as AR_EXACT_TABLE, rules as AR_RULES } from './locales/ar.js?v=20261001-7';
+import { exact as AR_EXACT_TABLE, rules as AR_RULES } from './locales/ar.js?v=20261001-8';
 
 export const LANGS = ['en', 'ar'];
 export const LANG_META = {

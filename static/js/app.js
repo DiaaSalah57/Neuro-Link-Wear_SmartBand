@@ -2,22 +2,22 @@
  * NeuroLink Wear — application shell: routing, theme, sticky device banner,
  * global SOS flow and live WebSocket fan-out.
  */
-import { api, auth } from './api.js?v=20261001-7';
-import { store } from './store.js?v=20261001-7';
-import { connectWS, disconnectWS, onWS, wsState } from './ws.js?v=20261001-7';
-import { initPrefs } from './prefs.js?v=20261001-7';
+import { api, auth } from './api.js?v=20261001-8';
+import { store } from './store.js?v=20261001-8';
+import { connectWS, disconnectWS, onWS, wsState } from './ws.js?v=20261001-8';
+import { initPrefs } from './prefs.js?v=20261001-8';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, fmtRelative, fmtDateTime,
-  confirmDialog,
-} from './ui.js?v=20261001-7';
+  confirmDialog, deviceIsLive, fmtBattery,
+} from './ui.js?v=20261001-8';
 
-import loginView from './views/login.js?v=20261001-7';
-import overviewView from './views/overview.js?v=20261001-7';
-import alertsView from './views/alerts.js?v=20261001-7';
-import safetyView from './views/safety.js?v=20261001-7';
-import trendsView from './views/trends.js?v=20261001-7';
-import managementView from './views/management.js?v=20261001-7';
-import settingsView from './views/settings.js?v=20261001-7';
+import loginView from './views/login.js?v=20261001-8';
+import overviewView from './views/overview.js?v=20261001-8';
+import alertsView from './views/alerts.js?v=20261001-8';
+import safetyView from './views/safety.js?v=20261001-8';
+import trendsView from './views/trends.js?v=20261001-8';
+import managementView from './views/management.js?v=20261001-8';
+import settingsView from './views/settings.js?v=20261001-8';
 
 const routes = {
   overview: overviewView,
@@ -57,11 +57,18 @@ function updateBanner(device) {
   if (!device) return;
   const dot = $('#status-dot');
   const label = $('#status-label');
-  const online = device.online === 1 || device.online === true;
+  const online = deviceIsLive(device);
   dot.className = `status-dot ${wsState.connected ? (online ? 'online' : 'offline') : 'connecting'}`;
   label.textContent = wsState.connected ? (online ? 'Device Online' : 'Device Offline') : 'Reconnecting…';
   $('#status-device-name').textContent = device.name || device.model || 'NeuroLink Band';
-  $('#status-battery-pct').textContent = `${device.battery ?? '—'}%`;
+  $('#status-battery-pct').textContent = fmtBattery(device);
+  // The chip's fill mirrors the reading; empty (and dim) when there is none.
+  const fill = $('#status-battery')?.querySelector('.battery-fill');
+  if (fill) {
+    const pct = online ? Math.max(0, Math.min(100, Number(device.battery) || 0)) : 0;
+    fill.setAttribute('width', String((13 * pct) / 100));
+    fill.style.fill = pct && pct < 20 ? 'var(--danger)' : '';
+  }
   $('#status-sync').textContent = `last sync ${fmtRelative(device.last_seen)}`;
 }
 
