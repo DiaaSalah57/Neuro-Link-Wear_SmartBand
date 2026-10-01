@@ -2,7 +2,7 @@
  * NeuroLink Wear — UI toolkit: DOM helpers, icons, toasts, modals,
  * skeleton loaders and empty states.
  */
-import { localeTag } from './i18n.js?v=20261001-6';
+import { localeTag } from './i18n.js?v=20261001-7';
 
 export { localeTag };
 

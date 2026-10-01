@@ -19,7 +19,7 @@
  * dispatched after every change (the shell re-renders the active view so
  * locale-aware date/number formatting picks up the new locale).
  */
-import { exact as AR_EXACT_TABLE, rules as AR_RULES } from './locales/ar.js?v=20261001-6';
+import { exact as AR_EXACT_TABLE, rules as AR_RULES } from './locales/ar.js?v=20261001-7';
 
 export const LANGS = ['en', 'ar'];
 export const LANG_META = {
@@ -33,7 +33,10 @@ const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'CODE', 'P
 const TRANSLATED_ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
 /* Latin-only text is candidate for translation; skip rules for long bodies
    such as server-generated narratives (left in English on purpose). */
-const RULE_MAX_LEN = 160;
+// Rules are tried in order on every untranslated string. Anchored patterns fail
+// fast on a mismatch, so the ceiling is set by the longest AI-narrative template
+// (~311 chars) rather than by a performance concern.
+const RULE_MAX_LEN = 420;
 
 const AR_EXACT = new Map(Object.entries(AR_EXACT_TABLE));
 
