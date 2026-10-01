@@ -2,21 +2,22 @@
  * NeuroLink Wear — application shell: routing, theme, sticky device banner,
  * global SOS flow and live WebSocket fan-out.
  */
-import { api, auth } from './api.js?v=20261001-4';
-import { store } from './store.js?v=20261001-4';
-import { connectWS, disconnectWS, onWS, wsState } from './ws.js?v=20261001-4';
+import { api, auth } from './api.js?v=20261001-6';
+import { store } from './store.js?v=20261001-6';
+import { connectWS, disconnectWS, onWS, wsState } from './ws.js?v=20261001-6';
+import { initPrefs } from './prefs.js?v=20261001-6';
 import {
   $, $$, esc, icons, toast, openModal, closeModal, fmtRelative, fmtDateTime,
   confirmDialog,
-} from './ui.js?v=20261001-4';
+} from './ui.js?v=20261001-6';
 
-import loginView from './views/login.js?v=20261001-4';
-import overviewView from './views/overview.js?v=20261001-4';
-import alertsView from './views/alerts.js?v=20261001-4';
-import safetyView from './views/safety.js?v=20261001-4';
-import trendsView from './views/trends.js?v=20261001-4';
-import managementView from './views/management.js?v=20261001-4';
-import settingsView from './views/settings.js?v=20261001-4';
+import loginView from './views/login.js?v=20261001-6';
+import overviewView from './views/overview.js?v=20261001-6';
+import alertsView from './views/alerts.js?v=20261001-6';
+import safetyView from './views/safety.js?v=20261001-6';
+import trendsView from './views/trends.js?v=20261001-6';
+import managementView from './views/management.js?v=20261001-6';
+import settingsView from './views/settings.js?v=20261001-6';
 
 const routes = {
   overview: overviewView,
@@ -258,6 +259,10 @@ async function boot() {
   booted = true;
   applyTheme();
 
+  // Language + text size (elderly accessibility). Applies the saved choices
+  // and wires the banner / sign-in controls before anything renders.
+  initPrefs();
+
   $('#theme-toggle').onclick = toggleTheme;
   $('#menu-btn').onclick = () => {
     $('#sidebar').classList.add('open');
@@ -297,6 +302,13 @@ async function boot() {
   window.addEventListener('nlw:theme', () => {
     $('#theme-icon-moon')?.classList.toggle('hidden', document.documentElement.dataset.theme === 'dark');
     $('#theme-icon-sun')?.classList.toggle('hidden', document.documentElement.dataset.theme !== 'dark');
+  });
+  // Language switch: static chrome is translated in-place by i18n.js; the
+  // active view is re-rendered so locale-aware formats (dates, times) update.
+  window.addEventListener('nlw:lang', () => {
+    try { sessionStorage.removeItem('nlw_map_focus'); } catch { /* ignore */ }
+    if (auth.user && currentRoute) navigate();
+    else loginView.render();
   });
 
   // Live WS fan-out → store + banner

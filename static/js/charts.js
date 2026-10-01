@@ -2,7 +2,7 @@
  * NeuroLink Wear — dependency-free interactive SVG charts:
  * multi-series line/area with hover crosshair + tooltip, sparklines, bars.
  */
-import { esc, fmtTime, fmtDateTime } from './ui.js?v=20261001-4';
+import { esc, fmtTime, fmtDateTime } from './ui.js?v=20261001-6';
 
 function niceTicks(min, max, count = 4) {
   if (min === max) { min -= 1; max += 1; }
@@ -239,7 +239,7 @@ export function donutChart(container, segments, opts = {}) {
         <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--surface-3)" stroke-width="${thickness}"/>
         ${arcs}
         <text x="${size / 2}" y="${size / 2}" text-anchor="middle" dominant-baseline="central"
-              style="font-size:15px;font-weight:700;fill:var(--text)">${esc(centerLabel)}</text>
+              style="font-size:calc(15px * var(--fs));font-weight:700;fill:var(--text)">${esc(centerLabel)}</text>
       </svg>
       <div style="display:grid;gap:7px">
         ${segments.map(s => `<span class="lg-item"><span class="lg-dot" style="background:${s.color}"></span>${esc(s.name)} · <b>${s.value}</b></span>`).join('')}

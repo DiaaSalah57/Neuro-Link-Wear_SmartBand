@@ -15,6 +15,7 @@ Real-time IoT health & safety monitoring for elderly individuals, their families
 | **Caregiver & Device Management** | Full CRUD for emergency contacts, wearable pairing with MQTT broker configuration (+ connection test), personalized health alert thresholds, wearer profile and role-based care-team users |
 | **Auth** | Role-based login (**Caregiver** vs **Admin**) with persistent HMAC-signed sessions (30 days) and PBKDF2 password hashing |
 | **UX** | Medical-grade responsive layout, sidebar navigation, sticky device-connectivity banner, quick SOS trigger, optimistic updates, skeleton loaders, empty states ("No incidents recorded today"), dark/light mode |
+| **Language & accessibility** | One-tap **English ⇄ العربية** switch (full RTL layout, Arabic typography, Arabic dates) and a **text-size** control (100% / 118% / 138%) built for elderly readers — available on the sign-in screen *and* in the top bar, with explicit options in Settings → Appearance |
 | **Seed Data** | Elderly patient profile, 7 days of vitals time-series (full 24 h populated), a recent fall-detection log with GPS + dispatch history, sample AI health summaries, devices, contacts and thresholds — fully operational on first load |
 
 ## Quick start
@@ -25,7 +26,15 @@ python3 -m venv .venv
 .venv/bin/python server.py            # http://localhost:8000
 ```
 
-The SQLite database (`data/neurolink.db`) is created and seeded **automatically on first boot**.
+The SQLite database (`data/neurolink.db`) is created on first boot. Demo accounts, the wearer profile,
+contacts and devices are seeded automatically; to also load the full demo dataset (7 days of vitals,
+incident history, AI summaries, dispatches) and to stream simulated telemetry, start it with:
+
+```bash
+NEUROLINK_SEED_DEMO=1 NEUROLINK_SIMULATOR=1 .venv/bin/python server.py   # full demo dataset + live stream
+```
+
+Without those flags the dashboard stays connected to whatever real hardware publishes over MQTT.
 
 ### Demo accounts
 

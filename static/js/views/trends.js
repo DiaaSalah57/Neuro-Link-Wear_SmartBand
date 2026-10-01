@@ -3,12 +3,12 @@
  * interactive time-series charts (HRV, temperature, stress, HR) with
  * date-range filters and daily activity summaries.
  */
-import { api } from '../api.js?v=20261001-4';
+import { api } from '../api.js?v=20261001-6';
 import {
   $, $$, esc, icons, fmtNum, fmtDate, skeletonChart, skeletonCards,
-  emptyState,
-} from '../ui.js?v=20261001-4';
-import { lineChart, barChart, donutChart } from '../charts.js?v=20261001-4';
+  emptyState, localeTag,
+} from '../ui.js?v=20261001-6';
+import { lineChart, barChart, donutChart } from '../charts.js?v=20261001-6';
 
 let rangeHours = 24;
 
@@ -21,7 +21,7 @@ function statTile({ label, value, unit = '', delta = null, deltaLabel = 'vs prev
   return `
   <div class="card stat-tile">
     <div class="label">${label}</div>
-    <div class="value">${value}<span style="font-size:13px;color:var(--muted);margin-left:3px">${unit}</span></div>
+    <div class="value">${value}<span style="font-size:calc(13px * var(--fs));color:var(--muted);margin-left:3px">${unit}</span></div>
     ${delta !== null ? `<div class="delta ${tone}">${delta > 0 ? '▲' : delta < 0 ? '▼' : '→'} ${fmtNum(Math.abs(delta), Math.abs(delta) < 1 ? 2 : 1)} <span class="muted" style="font-weight:500">${deltaLabel}</span></div>` : '<div class="delta neutral">—</div>'}
   </div>`;
 }
@@ -51,8 +51,8 @@ async function renderCharts() {
 
   const pts = (key) => data.map((d) => ({ t: d.ts, v: d[key] }));
   const timeFmt = rangeHours <= 48
-    ? (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : (d) => d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    ? (d) => d.toLocaleTimeString(localeTag(), { hour: '2-digit', minute: '2-digit' })
+    : (d) => d.toLocaleDateString(localeTag(), { month: 'short', day: 'numeric' });
 
   // HRV + temperature combined (dual series, normalized scale each own axis is
   // complex — render two stacked panels instead)
@@ -104,7 +104,7 @@ async function renderActivity() {
       donutChart(donut, act.map((x) => ({ name: x.activity, value: x.n, color: colors[x.activity] || '#241483' })),
         { centerLabel: `${total} pts` });
     } else {
-      donut.innerHTML = `<div class="muted" style="font-size:12.5px">Activity breakdown appears once live readings accumulate.</div>`;
+      donut.innerHTML = `<div class="muted" style="font-size:calc(12.5px * var(--fs))">Activity breakdown appears once live readings accumulate.</div>`;
     }
   }
 }
