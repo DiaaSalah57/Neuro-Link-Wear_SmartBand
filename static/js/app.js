@@ -17,6 +17,9 @@ import safetyView from './views/safety.js?v=20261001-4';
 import trendsView from './views/trends.js?v=20261001-4';
 import managementView from './views/management.js?v=20261001-4';
 import settingsView from './views/settings.js?v=20261001-4';
+import { initI18n } from './i18n.js?v=20261002-1';
+
+initI18n();
 
 const routes = {
   overview: overviewView,

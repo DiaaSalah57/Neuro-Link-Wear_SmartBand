@@ -21,7 +21,7 @@ export default {
           <div class="card-body">
             <div class="flex-between">
               <div>
-                <strong style="display:block;font-size:13.5px">Dark mode</strong>
+                <strong style="display:block;font-size: calc(13.5px * var(--ui-font-scale, 1))">Dark mode</strong>
                 <small class="muted">Switch between the light clinical theme and the dark night theme.</small>
               </div>
               <input type="checkbox" class="switch" id="set-theme" ${document.documentElement.dataset.theme === 'dark' ? 'checked' : ''}>
@@ -29,7 +29,7 @@ export default {
             <div class="divider"></div>
             <div class="flex-between">
               <div>
-                <strong style="display:block;font-size:13.5px">Density</strong>
+                <strong style="display:block;font-size: calc(13.5px * var(--ui-font-scale, 1))">Density</strong>
                 <small class="muted">Comfortable spacing for medical review sessions.</small>
               </div>
               <span class="badge neutral">comfortable</span>
@@ -43,7 +43,7 @@ export default {
             <div class="row" style="align-items:center">
               <span class="avatar lg" style="background:var(--accent)">${esc((user.name || '?').split(' ').map((x) => x[0]).slice(0, 2).join(''))}</span>
               <div>
-                <strong style="display:block">${esc(user.name || '')}</strong>
+                <strong style="display:block" translate="no">${esc(user.name || '')}</strong>
                 <small class="muted">${esc(user.email || '')}</small>
               </div>
               <span class="badge ${user.role === 'admin' ? 'purple' : 'neutral'}" style="margin-left:auto">${esc(user.role || '')}</span>

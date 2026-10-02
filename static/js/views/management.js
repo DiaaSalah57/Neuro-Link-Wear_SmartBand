@@ -87,7 +87,7 @@ async function renderContacts(box) {
   }
   box.innerHTML = `
     <div class="flex-between" style="margin-bottom:14px">
-      <div class="muted" style="font-size:12.5px">${contacts.length} saved · priority order controls the dispatch sequence</div>
+      <div class="muted" style="font-size: calc(12.5px * var(--ui-font-scale, 1))">${contacts.length} saved · priority order controls the dispatch sequence</div>
       <button class="btn primary sm" id="add-contact">${icons.plus} Add contact</button>
     </div>
     <div class="card table-wrap">
@@ -99,7 +99,7 @@ async function renderContacts(box) {
           ${contacts.map((c) => `
             <tr data-id="${c.id}">
               <td><span class="badge ${c.priority === 1 ? 'high' : 'neutral'}">P${c.priority}</span></td>
-              <td><strong>${esc(c.name)}</strong>${c.notes ? `<div class="muted" style="font-size:11.5px">${esc(c.notes)}</div>` : ''}</td>
+              <td><strong translate="no">${esc(c.name)}</strong>${c.notes ? `<div class="muted" translate="no" style="font-size: calc(11.5px * var(--ui-font-scale, 1))">${esc(c.notes)}</div>` : ''}</td>
               <td>${esc(c.relationship)}</td>
               <td class="mono">${esc(c.phone)}</td>
               <td>${c.can_dispatch ? '<span class="badge ok">enabled</span>' : '<span class="badge neutral">off</span>'}</td>
@@ -116,7 +116,7 @@ async function renderContacts(box) {
     const c = contacts.find((x) => x.id === +tr.dataset.id);
     tr.querySelector('[data-edit]').onclick = () => contactModal(c);
     tr.querySelector('[data-del]').onclick = async () => {
-      if (await confirmDialog('Delete contact?', `<b>${esc(c.name)}</b> will be removed from the emergency dispatch list.`, 'Delete')) {
+      if (await confirmDialog('Delete contact?', `<b translate="no">${esc(c.name)}</b> will be removed from the emergency dispatch list.`, 'Delete')) {
         // Optimistic removal — UI updates instantly, rolls back on error
         tr.style.opacity = '.35';
         try {
@@ -207,7 +207,7 @@ async function renderDevices(box) {
   const devices = await api.devices().catch(() => []);
   box.innerHTML = `
     <div class="flex-between" style="margin-bottom:14px">
-      <div class="muted" style="font-size:12.5px">Manage paired NeuroLink Wear bands and live device status.</div>
+      <div class="muted" style="font-size: calc(12.5px * var(--ui-font-scale, 1))">Manage paired NeuroLink Wear bands and live device status.</div>
       ${isAdmin() ? `<button class="btn primary sm" id="add-device">${icons.plus} Pair device</button>` : '<span class="badge purple">read-only · admin manages devices</span>'}
     </div>
     <div class="grid cols-2">
@@ -218,8 +218,8 @@ async function renderDevices(box) {
               <div class="row">
                 <div class="vital-icon" style="background:var(--accent-soft);color:var(--accent)">${icons.watch}</div>
                 <div>
-                  <strong>${esc(d.name)}</strong>
-                  <div class="muted" style="font-size:11.5px">${esc(d.model)} · SN ${esc(d.serial)} · FW ${esc(d.firmware)}</div>
+                  <strong translate="no">${esc(d.name)}</strong>
+                  <div class="muted" style="font-size: calc(11.5px * var(--ui-font-scale, 1))">${esc(d.model)} · SN ${esc(d.serial)} · FW ${esc(d.firmware)}</div>
                 </div>
               </div>
               <span class="badge ${d.online ? 'ok' : d.status === 'paired' ? 'medium' : 'neutral'}">${d.online ? 'online' : esc(d.status)}</span>
@@ -262,7 +262,7 @@ async function renderDevices(box) {
   $$('[data-deld]').forEach((b) => {
     b.onclick = async () => {
       const d = devices.find((x) => x.id === +b.dataset.deld);
-      if (await confirmDialog('Remove device?', `<b>${esc(d.name)}</b> will be unpaired and removed from this profile.`, 'Remove')) {
+      if (await confirmDialog('Remove device?', `<b translate="no">${esc(d.name)}</b> will be unpaired and removed from this profile.`, 'Remove')) {
         await api.deleteDevice(d.id).then(() => {
           toast('success', 'Device removed');
           renderTab();
@@ -288,7 +288,7 @@ async function renderThresholds(box) {
         <button class="btn ghost sm" id="th-reset">Reset to recommended</button>
       </div>
       <div class="card-body">
-        <p class="muted" style="font-size:12.5px;margin-bottom:12px">
+        <p class="muted" style="font-size: calc(12.5px * var(--ui-font-scale, 1));margin-bottom:12px">
           Alerts fire the moment a live reading crosses these limits. Values are tailored to Abdelrahman's clinical profile
           (hypertension, mild COPD). Changes take effect on the next reading — typically within 2 seconds.
         </p>
@@ -336,7 +336,7 @@ async function renderThresholds(box) {
           <span class="badge medium">monitor</span>
         </div>
         <div class="row" style="margin-top:16px;justify-content:flex-end">
-          <span class="muted" id="th-saved" style="font-size:12px"></span>
+          <span class="muted" id="th-saved" style="font-size: calc(12px * var(--ui-font-scale, 1))"></span>
           <button class="btn primary" id="th-save">${icons.check} Save thresholds</button>
         </div>
       </div>
@@ -428,7 +428,7 @@ async function renderUsers(box) {
   const users = await api.users().catch(() => []);
   box.innerHTML = `
     <div class="flex-between" style="margin-bottom:14px">
-      <div class="muted" style="font-size:12.5px">Role-based access: admins manage the platform, caregivers manage the care workflow.</div>
+      <div class="muted" style="font-size: calc(12.5px * var(--ui-font-scale, 1))">Role-based access: admins manage the platform, caregivers manage the care workflow.</div>
       <button class="btn primary sm" id="add-user">${icons.plus} Add team member</button>
     </div>
     <div class="card table-wrap">
@@ -437,7 +437,7 @@ async function renderUsers(box) {
         <tbody>
           ${users.map((u) => `
             <tr data-uid="${u.id}">
-              <td><strong>${esc(u.name)}</strong></td>
+              <td><strong translate="no">${esc(u.name)}</strong></td>
               <td class="muted">${esc(u.email)}</td>
               <td><span class="badge ${u.role === 'admin' ? 'purple' : 'neutral'}">${esc(u.role)}</span></td>
               <td class="mono">${esc(u.phone || '—')}</td>
@@ -454,7 +454,7 @@ async function renderUsers(box) {
     const u = users.find((x) => x.id === +tr.dataset.uid);
     tr.querySelector('[data-uedit]').onclick = () => userModal(u);
     tr.querySelector('[data-udel]').onclick = async () => {
-      if (await confirmDialog('Delete user?', `<b>${esc(u.name)}</b> will lose dashboard access immediately.`, 'Delete')) {
+      if (await confirmDialog('Delete user?', `<b translate="no">${esc(u.name)}</b> will lose dashboard access immediately.`, 'Delete')) {
         api.deleteUser(u.id).then(() => {
           toast('success', 'User deleted');
           renderTab();
@@ -478,7 +478,7 @@ async function renderPatient(box) {
         <div class="row" style="align-items:center;margin-bottom:16px">
           <span class="avatar lg" style="background:${esc(p.avatar_color)}">${esc((p.name || 'AB').split(' ').map((x) => x[0]).slice(0, 2).join('').toUpperCase())}</span>
           <div>
-            <strong style="font-size:17px">${esc(p.name)}</strong>
+            <strong style="font-size: calc(17px * var(--ui-font-scale, 1))" translate="no">${esc(p.name)}</strong>
             <div class="muted">${p.age} · ${esc(p.gender)} · ${esc(p.room)}</div>
           </div>
         </div>
@@ -569,7 +569,7 @@ async function renderCalibration(box) {
         </label>`).join('')}
     </div>
     <div class="row" style="justify-content:flex-end;margin-top:12px;gap:12px">
-      <span class="muted" style="font-size:12px">Manual values stop auto-updating until you change them.</span>
+      <span class="muted" style="font-size: calc(12px * var(--ui-font-scale, 1))">Manual values stop auto-updating until you change them.</span>
       <button class="btn ghost" id="cal-save">Save manual overrides</button>
     </div>
 
@@ -591,7 +591,7 @@ async function renderCalibration(box) {
       </label>
     </div>
     <div class="row" style="justify-content:flex-end;margin-top:12px;gap:12px">
-      <span class="muted" style="font-size:12px">Oral temp + band skin temp calibrates the personal skin→core offset.</span>
+      <span class="muted" style="font-size: calc(12px * var(--ui-font-scale, 1))">Oral temp + band skin temp calibrates the personal skin→core offset.</span>
       <button class="btn primary" id="cal-ref-add">Apply reference point</button>
     </div>
 

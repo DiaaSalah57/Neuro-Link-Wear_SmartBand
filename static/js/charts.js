@@ -239,7 +239,7 @@ export function donutChart(container, segments, opts = {}) {
         <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--surface-3)" stroke-width="${thickness}"/>
         ${arcs}
         <text x="${size / 2}" y="${size / 2}" text-anchor="middle" dominant-baseline="central"
-              style="font-size:15px;font-weight:700;fill:var(--text)">${esc(centerLabel)}</text>
+              style="font-size: calc(15px * var(--ui-font-scale, 1));font-weight:700;fill:var(--text)">${esc(centerLabel)}</text>
       </svg>
       <div style="display:grid;gap:7px">
         ${segments.map(s => `<span class="lg-item"><span class="lg-dot" style="background:${s.color}"></span>${esc(s.name)} · <b>${s.value}</b></span>`).join('')}

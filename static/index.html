@@ -8,8 +8,8 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23241483'/%3E%3Cpath d='M4 16h6l2.5-6 4 12 3-6h8' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/styles.css?v=20261001-4">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css?v=20261002-1">
   <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
 </head>
 <body>
@@ -37,6 +37,14 @@
       </div>
     </div>
     <div class="login-panel">
+      <div class="a11y-controls login-accessibility-controls" data-i18n-ignore aria-label="Language and text size controls">
+        <button type="button" class="btn ghost sm access-btn" data-language-toggle>
+          <span class="control-mark" aria-hidden="true">ع</span><span class="accessibility-label" data-language-label>العربية</span>
+        </button>
+        <button type="button" class="btn ghost sm access-btn" data-font-toggle aria-pressed="false">
+          <span class="control-mark" aria-hidden="true">A+</span><span class="accessibility-label" data-font-label>Large text</span>
+        </button>
+      </div>
       <div class="login-card">
         <h2>Welcome back</h2>
         <p class="muted">Sign in to the NeuroLink Wear dashboard</p>
@@ -56,15 +64,15 @@
           <p class="muted">Quick sign-in accounts — one click to fill</p>
           <button class="demo-chip" data-email="abdelrahman@neurolink.health" data-pw="abdelrahman123">
             <span class="avatar sm" style="background:#0d9488">AB</span>
-            <span><strong>Abdelrahman</strong><small>abdelrahman@neurolink.health · abdelrahman123</small></span>
+            <span><strong translate="no">Abdelrahman</strong><small translate="no">abdelrahman@neurolink.health · abdelrahman123</small></span>
           </button>
           <button class="demo-chip" data-email="caregiver@neurolink.health" data-pw="caregiver123">
             <span class="avatar sm" style="background:#241483">MK</span>
-            <span><strong>Malak (Caregiver)</strong><small>caregiver@neurolink.health</small></span>
+            <span><strong><span translate="no">Malak</span> (<span>Caregiver</span>)</strong><small translate="no">caregiver@neurolink.health</small></span>
           </button>
           <button class="demo-chip" data-email="admin@neurolink.health" data-pw="admin123">
             <span class="avatar sm" style="background:#5b4bd6">DA</span>
-            <span><strong>Diaa (Admin)</strong><small>admin@neurolink.health</small></span>
+            <span><strong><span translate="no">Diaa</span> (<span>Admin</span>)</strong><small translate="no">admin@neurolink.health</small></span>
           </button>
         </div>
       </div>
@@ -85,7 +93,7 @@
       <div class="patient-chip" id="patient-chip">
         <span class="avatar" id="patient-avatar">AB</span>
         <div class="patient-chip-info">
-          <strong id="patient-chip-name">Abdelrahman</strong>
+          <strong id="patient-chip-name" translate="no">Abdelrahman</strong>
           <small id="patient-chip-sub">78 · Suite 214 · NL-200</small>
         </div>
       </div>
@@ -123,7 +131,7 @@
         <div class="user-card" id="user-card">
           <span class="avatar sm" id="user-avatar">EC</span>
           <div class="user-card-info">
-            <strong id="user-name">—</strong>
+            <strong id="user-name" translate="no">—</strong>
             <small id="user-role">—</small>
           </div>
           <button class="icon-btn" id="logout-btn" title="Sign out" aria-label="Sign out">
@@ -144,7 +152,7 @@
           <span class="status-dot online" id="status-dot"></span>
           <strong id="status-label">Connecting…</strong>
           <span class="status-sep">·</span>
-          <span class="muted" id="status-device-name">NeuroLink Band NL-200</span>
+          <span class="muted" id="status-device-name" translate="no">NeuroLink Band NL-200</span>
           <span class="status-sep">·</span>
           <span class="battery-chip" id="status-battery" title="Band battery">
             <svg viewBox="0 0 24 24" width="16" height="16"><rect x="2" y="7" width="17" height="10" rx="2.5"/><path d="M21 10.5v3" stroke-width="2"/><rect class="battery-fill" x="4" y="9" width="11" height="6" rx="1"/></svg>
@@ -154,6 +162,14 @@
           <span class="muted mono" id="status-sync">last sync —</span>
         </div>
         <div class="banner-actions">
+          <div class="a11y-controls header-accessibility-controls" data-i18n-ignore aria-label="Language and text size controls">
+            <button type="button" class="btn ghost sm access-btn" data-language-toggle>
+              <span class="control-mark" aria-hidden="true">ع</span><span class="accessibility-label" data-language-label>العربية</span>
+            </button>
+            <button type="button" class="btn ghost sm access-btn" data-font-toggle aria-pressed="false">
+              <span class="control-mark" aria-hidden="true">A+</span><span class="accessibility-label" data-font-label>Large text</span>
+            </button>
+          </div>
           <button class="btn ghost sm" id="theme-toggle" title="Toggle dark / light mode" aria-label="Toggle theme">
             <svg id="theme-icon-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></svg>
             <svg id="theme-icon-sun" class="hidden" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></svg>
@@ -173,6 +189,6 @@
   <div id="toast-root" class="toast-root" aria-live="polite"></div>
   <div id="modal-root" class="modal-root hidden"></div>
 
-  <script type="module" src="/static/js/app.js?v=20261001-4"></script>
+  <script type="module" src="/static/js/app.js?v=20261002-1"></script>
 </body>
 </html>
