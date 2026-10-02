@@ -890,7 +890,9 @@ input[type="range"] { accent-color: var(--accent); width: 100%; }
 
 /* ── Language and senior-friendly text controls ──────────────────────── */
 html.large-text { --ui-font-scale: 1.25; }
-html.large-text body { line-height: 1.68; }
+html.extra-large-text { --ui-font-scale: 1.5; }
+html.large-text body,
+html.extra-large-text body { line-height: 1.68; }
 html[lang="ar"] {
   --font-sans: 'Noto Sans Arabic', Tahoma, 'Segoe UI', sans-serif;
 }

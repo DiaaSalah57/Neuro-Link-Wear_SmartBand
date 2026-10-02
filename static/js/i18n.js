@@ -596,7 +596,7 @@ const dictionary = new Map(Object.entries(ARABIC).map(([english, arabic]) => [no
 const textState = new WeakMap();
 const attributeState = new WeakMap();
 let language = 'en';
-let largeText = false;
+let textLevel = 0;
 let observer = null;
 
 function localizedRelative(source) {
@@ -747,19 +747,22 @@ function updateControls() {
     button.setAttribute('aria-label', language === 'en' ? 'Switch language to Arabic' : 'التبديل إلى الإنجليزية');
     button.setAttribute('title', language === 'en' ? 'Switch language to Arabic' : 'التبديل إلى الإنجليزية');
   });
+  const englishSizeLabels = ['Standard text', 'Large text', 'Extra large text'];
+  const arabicSizeLabels = ['حجم عادي', 'خط كبير', 'خط أكبر جدًا'];
+  const levelLabel = (language === 'en' ? englishSizeLabels : arabicSizeLabels)[textLevel];
   document.querySelectorAll('[data-font-toggle]').forEach((button) => {
     const label = button.querySelector('[data-font-label]');
-    if (label) label.textContent = language === 'en'
-      ? (largeText ? 'Standard text' : 'Large text')
-      : (largeText ? 'حجم عادي' : 'تكبير النص');
-    button.setAttribute('aria-pressed', String(largeText));
-    button.setAttribute('aria-label', language === 'en'
-      ? (largeText ? 'Use standard text size' : 'Enlarge text')
-      : (largeText ? 'استخدام حجم النص العادي' : 'تكبير النص'));
-    button.setAttribute('title', language === 'en'
-      ? (largeText ? 'Use standard text size' : 'Enlarge text')
-      : (largeText ? 'استخدام حجم النص العادي' : 'تكبير النص'));
-    button.classList.toggle('active', largeText);
+    const mark = button.querySelector('[data-font-mark]');
+    if (label) label.textContent = levelLabel;
+    if (mark) mark.textContent = ['A', 'A+', 'A++'][textLevel];
+    const ariaLabel = language === 'en'
+      ? `Text size: ${levelLabel}. Click to cycle size.`
+      : `حجم النص: ${levelLabel}. اضغط لتغيير الحجم.`;
+    button.dataset.fontLevel = String(textLevel);
+    button.setAttribute('aria-pressed', String(textLevel > 0));
+    button.setAttribute('aria-label', ariaLabel);
+    button.setAttribute('title', ariaLabel);
+    button.classList.toggle('active', textLevel > 0);
   });
 }
 
@@ -775,10 +778,15 @@ export function setLanguage(nextLanguage) {
   window.dispatchEvent(new CustomEvent('nlw:languagechange', { detail: { language } }));
 }
 
-export function setLargeText(enabled) {
-  largeText = Boolean(enabled);
-  document.documentElement.classList.toggle('large-text', largeText);
-  try { localStorage.setItem('nlw_large_text', String(largeText)); } catch { /* storage may be disabled */ }
+export function setTextLevel(level) {
+  const parsed = Number(level);
+  textLevel = Number.isInteger(parsed) ? Math.max(0, Math.min(2, parsed)) : 0;
+  document.documentElement.classList.toggle('large-text', textLevel === 1);
+  document.documentElement.classList.toggle('extra-large-text', textLevel === 2);
+  try {
+    localStorage.setItem('nlw_text_level', String(textLevel));
+    localStorage.setItem('nlw_large_text', String(textLevel > 0));
+  } catch { /* storage may be disabled */ }
   updateControls();
 }
 
@@ -788,20 +796,23 @@ export function getLanguage() {
 
 export function initI18n() {
   let savedLanguage = 'en';
-  let savedLargeText = false;
+  let savedTextLevel = 0;
   try {
     savedLanguage = localStorage.getItem('nlw_language') === 'ar' ? 'ar' : 'en';
-    savedLargeText = localStorage.getItem('nlw_large_text') === 'true';
+    const storedLevel = localStorage.getItem('nlw_text_level');
+    savedTextLevel = storedLevel === null
+      ? (localStorage.getItem('nlw_large_text') === 'true' ? 1 : 0)
+      : Number(storedLevel);
   } catch { /* storage may be disabled */ }
 
-  setLargeText(savedLargeText);
+  setTextLevel(savedTextLevel);
   setLanguage(savedLanguage);
 
   document.querySelectorAll('[data-language-toggle]').forEach((button) => {
     button.addEventListener('click', () => setLanguage(language === 'en' ? 'ar' : 'en'));
   });
   document.querySelectorAll('[data-font-toggle]').forEach((button) => {
-    button.addEventListener('click', () => setLargeText(!largeText));
+    button.addEventListener('click', () => setTextLevel((textLevel + 1) % 3));
   });
 
   if (!observer) {
